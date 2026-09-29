@@ -1,0 +1,7 @@
+@model EditRoleVM
+@{ ViewData["Title"] = "تعديل صلاحية"; }
+<form asp-action="EditRole" method="post" class="col-md-6">
+    <input type="hidden" asp-for="Id" />
+    <div class="mb-3"><label asp-for="RoleName"></label><input asp-for="RoleName" class="form-control" /></div>
+    <button class="btn btn-primary">حفظ</button>
+</form>

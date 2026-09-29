@@ -1,0 +1,123 @@
+@using DentalLab.ViewModels.Finance
+@model IEnumerable<AccountBalanceVM>
+@{
+    ViewData["Title"] = "الحسابات";
+    var rows = Model ?? Enumerable.Empty<AccountBalanceVM>();
+    var inactive = ViewBag.InactiveAccounts as List<FinancialAccount> ?? new List<FinancialAccount>();
+    var totalOpening = rows.Sum(a => a.OpeningBalance);
+    var totalIn = rows.Sum(a => a.In);
+    var totalOut = rows.Sum(a => a.Out);
+    var totalBalance = rows.Sum(a => a.Balance);
+}
+<partial name="Partial/_datatables-css" />
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">الحسابات والصناديق</h3>
+    <a asp-action="Create" class="btn btn-primary">حساب جديد</a>
+</div>
+
+<div class="row g-2 mb-3">
+    <div class="col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="small text-muted">عدد الحسابات النشطة</div>
+            <div class="fs-5 fw-bold">@rows.Count()</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-success"><div class="card-body py-2">
+            <div class="small text-muted">إجمالي الداخل</div>
+            <div class="fs-5 fw-bold text-success">@totalIn.ToString("N2")</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-danger"><div class="card-body py-2">
+            <div class="small text-muted">إجمالي الخارج</div>
+            <div class="fs-5 fw-bold text-danger">@totalOut.ToString("N2")</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-primary"><div class="card-body py-2">
+            <div class="small text-muted">إجمالي الأرصدة</div>
+            <div class="fs-5 fw-bold text-primary">@totalBalance.ToString("N2")</div>
+        </div></div>
+    </div>
+</div>
+
+<table id="table1" class="table table-striped table-bordered table-hover w-100">
+    <thead>
+        <tr>
+            <th>الحساب</th>
+            <th>النوع</th>
+            <th>رصيد افتتاحي</th>
+            <th>داخل</th>
+            <th>خارج</th>
+            <th>الرصيد</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var a in rows)
+        {
+            <tr>
+                <td><a asp-action="Edit" asp-route-id="@a.AccountId">@a.Name</a></td>
+                <td>@a.Kind</td>
+                <td data-order="@a.OpeningBalance">@a.OpeningBalance.ToString("N2")</td>
+                <td class="text-success" data-order="@a.In">@a.In.ToString("N2")</td>
+                <td class="text-danger" data-order="@a.Out">@a.Out.ToString("N2")</td>
+                <td class="fw-bold" data-order="@a.Balance">@a.Balance.ToString("N2")</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@a.AccountId" class="btn btn-sm btn-outline-secondary">تعديل</a>
+                    <form asp-action="Delete" asp-route-id="@a.AccountId" method="post" class="d-inline" onsubmit="return confirm('حذف؟');">
+                        <button class="btn btn-sm btn-outline-danger">حذف</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr class="table-light fw-bold">
+            <th colspan="2" class="text-end">الإجمالي</th>
+            <th>@totalOpening.ToString("N2")</th>
+            <th>@totalIn.ToString("N2")</th>
+            <th>@totalOut.ToString("N2")</th>
+            <th>@totalBalance.ToString("N2")</th>
+            <th></th>
+        </tr>
+    </tfoot>
+</table>
+
+@if (inactive.Count > 0)
+{
+    <h5 class="fw-bold mt-4 mb-2">حسابات معطّلة</h5>
+    <p class="small text-muted">الحسابات المعطّلة لا تدخل في أرصدة الصندوق أعلاه.</p>
+    <table class="table table-bordered align-middle">
+        <thead>
+            <tr>
+                <th>الحساب</th>
+                <th>النوع</th>
+                <th>رصيد افتتاحي</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var a in inactive)
+            {
+                <tr class="table-secondary">
+                    <td><a asp-action="Edit" asp-route-id="@a.Id">@a.Name</a></td>
+                    <td>@a.Kind</td>
+                    <td>@a.OpeningBalance.ToString("N2")</td>
+                    <td>
+                        <a asp-action="Edit" asp-route-id="@a.Id" class="btn btn-sm btn-outline-secondary">تعديل</a>
+                        <form asp-action="Delete" asp-route-id="@a.Id" method="post" class="d-inline" onsubmit="return confirm('حذف؟');">
+                            <button class="btn btn-sm btn-outline-danger">حذف</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@section Scripts {
+    <partial name="Partial/_datatables-js" />
+}

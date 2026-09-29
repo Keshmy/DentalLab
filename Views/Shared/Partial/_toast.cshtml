@@ -1,0 +1,20 @@
+<div class="toast-container position-fixed top-0 start-0 p-4" style="z-index: 1080;">
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div id="toastsuccess" class="toast show bg-success text-white" role="alert">
+            <div class="toast-body">@TempData["SuccessMessage"]</div>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div id="toastdanger" class="toast show bg-danger text-white" role="alert">
+            <div class="toast-body">@TempData["ErrorMessage"]</div>
+        </div>
+    }
+</div>
+@if (TempData["SuccessMessage"] != null || TempData["ErrorMessage"] != null)
+{
+    <script>
+        setTimeout(() => document.querySelectorAll('.toast').forEach(t => t.classList.remove('show')), 4000);
+    </script>
+}

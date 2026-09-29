@@ -1,0 +1,31 @@
+@model IEnumerable<RoleVM>
+@{ ViewData["Title"] = "الصلاحيات"; }
+<div class="d-flex justify-content-between mb-3">
+    <h3>الصلاحيات</h3>
+    @if (User.IsInRole("Prog"))
+    {
+        <a asp-action="CreateRole" class="btn btn-primary">صلاحية جديدة</a>
+    }
+</div>
+@if (!string.IsNullOrEmpty(ViewBag.RoleInUse as string))
+{
+    <div class="alert alert-warning">لا يمكن حذف الصلاحية المستخدمة: @ViewBag.RoleInUse</div>
+}
+<div class="row g-3">
+@foreach (var role in Model)
+{
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h5>@role.Name</h5>
+            <p class="text-muted">عدد المستخدمين: @role.UsersCount</p>
+            @if (User.IsInRole("Prog"))
+            {
+                <a asp-action="EditRole" asp-route-id="@role.Id" class="btn btn-sm btn-outline-primary">تعديل</a>
+                <form asp-action="DeleteRole" asp-route-id="@role.Id" method="post" class="d-inline" onsubmit="return confirm('حذف؟');">
+                    <button class="btn btn-sm btn-outline-danger mt-1">حذف</button>
+                </form>
+            }
+        </div>
+    </div>
+}
+</div>

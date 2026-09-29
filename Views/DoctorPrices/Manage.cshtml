@@ -1,0 +1,71 @@
+@model DentalLab.ViewModels.Finance.DoctorPriceSheetVM
+@{
+    ViewData["Title"] = "أسعار الطبيب";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">أسعار الطبيب: @Model.DoctorName</h4>
+    <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+</div>
+
+<div class="alert alert-light border">
+    اترك خانة <strong>السعر الخاص</strong> فارغة ليُطبَّق السعر العام.
+    إن كتبت سعراً مساوياً للسعر العام فسيُحذف التخصيص تلقائياً.
+    <br />
+    تعديل الأسعار هنا <strong>لا يغيّر</strong> الحالات أو الفواتير المسجَّلة سابقاً.
+</div>
+
+<form asp-action="Manage" asp-route-id="@Model.DoctorId" method="post">
+    <input type="hidden" asp-for="DoctorId" />
+    <input type="hidden" asp-for="DoctorName" />
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>المنتج</th>
+                        <th style="width:130px">السعر العام</th>
+                        <th style="width:150px">السعر الخاص</th>
+                        <th style="width:120px">الفرق</th>
+                        <th style="width:130px">تكلفة الوحدة</th>
+                        <th style="width:130px">ربح الوحدة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < Model.Rows.Count; i++)
+                    {
+                        var row = Model.Rows[i];
+                        <tr class="@(row.HasOverride ? "table-info" : "")">
+                            <td>
+                                <input type="hidden" asp-for="Rows[i].ServiceTypeId" />
+                                <input type="hidden" asp-for="Rows[i].ServiceName" />
+                                <input type="hidden" asp-for="Rows[i].GeneralPrice" />
+                                <input type="hidden" asp-for="Rows[i].UnitCost" />
+                                @row.ServiceName
+                            </td>
+                            <td>@row.GeneralPrice.ToString("N2")</td>
+                            <td>
+                                <input asp-for="Rows[i].SpecialPrice" class="form-control" type="number" step="0.01" min="0"
+                                       placeholder="@row.GeneralPrice.ToString("N2")" />
+                                <span asp-validation-for="Rows[i].SpecialPrice" class="text-danger small"></span>
+                            </td>
+                            <td class="@(row.Difference < 0 ? "text-danger" : row.Difference > 0 ? "text-success" : "text-muted")">
+                                @(row.Difference == 0 ? "—" : row.Difference.ToString("N2"))
+                            </td>
+                            <td class="text-muted">@row.UnitCost.ToString("N2")</td>
+                            <td class="@(row.Margin >= 0 ? "text-success" : "text-danger")">@row.Margin.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer">
+            <button class="btn btn-primary px-5">حفظ الأسعار</button>
+            <span class="text-muted ms-3">أسعار خاصة حالياً: <strong>@Model.OverrideCount</strong></span>
+        </div>
+    </div>
+</form>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

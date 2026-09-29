@@ -1,0 +1,14 @@
+@model List<UserRolesVM>
+<form asp-action="EditUserRoles" asp-controller="Users" method="post">
+    <input type="hidden" name="userId" value="@ViewBag.UserId" />
+    @for (int i = 0; i < Model.Count; i++)
+    {
+        <input type="hidden" asp-for="@Model[i].RoleId" />
+        <input type="hidden" asp-for="@Model[i].RoleName" />
+        <div class="form-check form-switch mb-2">
+            <input asp-for="@Model[i].IsSelected" class="form-check-input" />
+            <label class="form-check-label">@Model[i].RoleName</label>
+        </div>
+    }
+    <button class="btn btn-primary">تطبيق</button>
+</form>

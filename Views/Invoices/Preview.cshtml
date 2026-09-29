@@ -1,0 +1,155 @@
+@model DentalLab.ViewModels.Finance.InvoicePreviewVM
+@{
+    ViewData["Title"] = "معاينة الفاتورة";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        معاينة فاتورة @Model.ClinicName
+        @if (!string.IsNullOrWhiteSpace(Model.DoctorName))
+        {
+            <span class="text-muted">— @Model.DoctorName</span>
+        }
+    </h4>
+    <a asp-action="Index" asp-route-year="@Model.Year" asp-route-month="@Model.Month" class="btn btn-outline-secondary">رجوع</a>
+</div>
+
+<div class="mb-3">
+    من @Model.FromDate.ToString("yyyy/M/d") إلى @Model.ToDate.ToString("yyyy/M/d")
+    — @Model.CaseCount حالة، @Model.Units وحدة
+</div>
+
+<form method="get" asp-action="Preview" class="row g-2 mb-3">
+    <input type="hidden" name="clinicId" value="@Model.ClinicId" />
+    <input type="hidden" name="year" value="@Model.Year" />
+    <input type="hidden" name="month" value="@Model.Month" />
+    <div class="col-md-4">
+        <select name="doctorId" class="form-select" asp-items="ViewBag.Doctors">
+            <option value="">كل أطباء المركز (فاتورة واحدة)</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <button class="btn btn-outline-primary">فاتورة لطبيب واحد</button>
+    </div>
+</form>
+
+@if (Model.ExistingInvoice != null)
+{
+    <div class="alert alert-info">
+        صدرت فاتورة لهذه الفترة برقم <strong>@Model.ExistingInvoice.Number</strong>
+        بإجمالي <strong>@Model.ExistingInvoice.TotalAmount.ToString("N2")</strong>.
+        <a asp-action="Details" asp-route-id="@Model.ExistingInvoice.Id" class="alert-link">عرض الفاتورة</a>
+    </div>
+}
+
+@if (Model.HasAlreadyInvoiced)
+{
+    <div class="alert alert-warning">
+        بعض الحالات في هذه المعاينة مُفوترة في فاتورة أخرى (مثلاً فاتورة طبيب منفصلة).
+        إصدار فاتورة جديدة سيتركها مرتبطة بفاتورتها الأصلية — راجع الأسطر المعلَّمة أدناه
+        حتى لا تُطالِب المركز بالمبلغ مرتين.
+    </div>
+}
+
+@if (Model.Lines.Count == 0)
+{
+    <div class="alert alert-secondary">لا توجد أعمال في هذه الفترة.</div>
+}
+else
+{
+    <div class="card mb-3">
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>رقم الحالة</th>
+                        <th>اسم الحالة</th>
+                        <th>الطبيب</th>
+                        <th>المنتج</th>
+                        <th>العدد</th>
+                        <th>السعر</th>
+                        <th>الإجمالي</th>
+                    </tr>
+                </thead>
+                @foreach (var group in Model.ByDoctor)
+                {
+                    <tbody>
+                        <tr class="table-secondary">
+                            <th colspan="4">@group.Key</th>
+                            <th>@group.Sum(l => l.Quantity)</th>
+                            <th></th>
+                            <th>@group.Sum(l => l.LineTotal).ToString("N2")</th>
+                        </tr>
+                        @foreach (var line in group)
+                        {
+                            <tr class="@(line.IsRemake ? "table-warning" : "")">
+                                <td>@line.CaseNumber</td>
+                                <td>@line.PatientName</td>
+                                <td>@line.DoctorName</td>
+                                <td>
+                                    @line.ProductName
+                                    @if (line.AlreadyInvoiced)
+                                    {
+                                        <span class="badge bg-danger">مفوترة سابقاً</span>
+                                    }
+                                </td>
+                                <td>@line.Quantity</td>
+                                <td>@line.UnitPrice.ToString("N2")</td>
+                                <td>@line.LineTotal.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                }
+                <tfoot>
+                    <tr class="table-dark">
+                        <th colspan="4" class="text-end">عدد الوحدات / إجمالي الفاتورة</th>
+                        <th>@Model.Units</th>
+                        <th></th>
+                        <th class="fs-5">@Model.Total.ToString("N2")</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-4">
+            <div class="card"><div class="card-body py-2">
+                <div class="small text-muted">تكلفة المواد</div>
+                <div class="fs-5 fw-bold">@Model.TotalCost.ToString("N2")</div>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card"><div class="card-body py-2">
+                <div class="small text-muted">الربح الإجمالي</div>
+                <div class="fs-5 fw-bold text-success">@Model.GrossProfit.ToString("N2")</div>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card"><div class="card-body py-2">
+                <div class="small text-muted">إعادات (@Model.RemakeUnits وحدة)</div>
+                <div class="fs-5 fw-bold text-danger">@Model.FreeRemakeCost.ToString("N2")</div>
+            </div></div>
+        </div>
+    </div>
+
+    @if (Model.ExistingInvoice == null)
+    {
+        <form asp-action="Issue" method="post" class="card">
+            <div class="card-body row g-2 align-items-end">
+                <input type="hidden" name="clinicId" value="@Model.ClinicId" />
+                <input type="hidden" name="doctorId" value="@Model.DoctorId" />
+                <input type="hidden" name="year" value="@Model.Year" />
+                <input type="hidden" name="month" value="@Model.Month" />
+                <div class="col-md-6">
+                    <label class="form-label">ملاحظات على الفاتورة</label>
+                    <input name="notes" class="form-control" />
+                </div>
+                <div class="col-md-6">
+                    <button class="btn btn-primary px-5">إصدار الفاتورة</button>
+                    <span class="text-muted ms-2">تُثبَّت الأسطر ولا تتغير بعد الإصدار.</span>
+                </div>
+            </div>
+        </form>
+    }
+}

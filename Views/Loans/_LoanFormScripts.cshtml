@@ -1,0 +1,40 @@
+<script>
+(function () {
+    var employee = document.getElementById('EmployeeId');
+    var person = document.getElementById('PersonName');
+    if (employee && person) {
+        employee.addEventListener('change', function () {
+            var opt = employee.options[employee.selectedIndex];
+            if (employee.value && opt) {
+                person.value = opt.text.trim();
+                person.dispatchEvent(new Event('change'));
+                if (window.jQuery && jQuery(person).valid) {
+                    jQuery(person).valid();
+                }
+            }
+        });
+    }
+
+    var form = document.getElementById('loanForm');
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            var name = (person && person.value || '').trim();
+            var emp = employee && employee.value;
+            if (!name && !emp) {
+                e.preventDefault();
+                if (person) {
+                    person.focus();
+                    var msg = person.parentElement.querySelector('span[data-valmsg-for="PersonName"]')
+                        || person.parentElement.querySelector('span.text-danger');
+                    if (msg) {
+                        msg.textContent = 'أدخل اسم الشخص أو اختر موظفاً';
+                        msg.classList.remove('field-validation-valid');
+                        msg.classList.add('field-validation-error');
+                    }
+                }
+                return false;
+            }
+        });
+    }
+})();
+</script>

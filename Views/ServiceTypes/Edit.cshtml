@@ -1,0 +1,30 @@
+@model ServiceType
+@{ ViewData["Title"] = "تعديل المنتج"; }
+<h4 class="mb-3">تعديل: @Model.Name</h4>
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="col-md-6">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <input type="hidden" asp-for="Id" />
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="UnitPrice" class="form-label"></label>
+        <input asp-for="UnitPrice" class="form-control" />
+        <div class="form-text">
+            تغيير السعر لا يؤثر على الحالات المسجَّلة سابقاً — كل سطر يحفظ سعره وقت الإدخال.
+        </div>
+    </div>
+    <div class="mb-3">
+        <label asp-for="UnitCost" class="form-label"></label>
+        <input asp-for="UnitCost" class="form-control" />
+    </div>
+    <div class="form-check mb-3">
+        <input asp-for="IsActive" class="form-check-input" />
+        <label asp-for="IsActive" class="form-check-label"></label>
+    </div>
+    <button class="btn btn-primary">حفظ</button>
+    <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+</form>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

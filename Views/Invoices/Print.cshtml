@@ -1,0 +1,178 @@
+@model Invoice
+@{
+    Layout = null;
+    var site = ViewBag.Site as SiteInfo;
+    var title = Model.Doctor != null
+        ? $"{Model.Clinic?.Name} - {Model.Doctor.Name}"
+        : Model.Clinic?.Name ?? "بدون مركز";
+}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <title>@title — شهر @Model.Month - @Model.Year</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet" />
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            margin: 0;
+            padding: 18px 24px;
+            color: #111;
+            font-size: 13px;
+        }
+
+        .head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #1f4b48;
+            padding-bottom: 10px;
+            margin-bottom: 14px;
+        }
+
+        .lab-name { font-size: 20px; font-weight: 700; color: #1f4b48; }
+        .lab-sub { color: #555; font-size: 12px; }
+        .meta { text-align: left; font-size: 12px; line-height: 1.9; }
+        .meta span { color: #555; }
+
+        .clinic {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: #eef4f3;
+            padding: 8px 12px;
+            border-radius: 4px;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+
+        th, td {
+            border: 1px solid #9bbcb8;
+            padding: 6px 8px;
+            text-align: center;
+        }
+
+        thead th { background: #1f4b48; color: #fff; font-weight: 600; }
+        tbody tr:nth-child(even) { background: #f7fbfa; }
+        .doctor-row th { background: #dcebe8; text-align: right; font-weight: 700; }
+        .remake { background: #fff6e0 !important; }
+
+        tfoot th {
+            background: #1f4b48;
+            color: #fff;
+            font-size: 15px;
+        }
+
+        .bank {
+            margin-top: 16px;
+            border: 1px solid #9bbcb8;
+            border-radius: 4px;
+            padding: 10px 12px;
+            font-size: 12px;
+            line-height: 2;
+        }
+
+        .bank strong { color: #1f4b48; }
+        .no-print { margin-bottom: 12px; }
+
+        .btn {
+            font-family: 'Cairo', sans-serif;
+            padding: 8px 22px;
+            border: 0;
+            border-radius: 4px;
+            background: #1f4b48;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        @@media print {
+            .no-print { display: none; }
+            body { padding: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button class="btn" onclick="window.print()">طباعة</button>
+    </div>
+
+    <div class="head">
+        <div>
+            <div class="lab-name">@(site?.Name ?? "المختبر")</div>
+            <div class="lab-sub">@site?.Activity</div>
+        </div>
+        <div class="meta">
+            <div><span>فاتورة رقم:</span> <strong>@Model.Number</strong></div>
+            <div><span>من تاريخ:</span> @Model.FromDate.ToString("d/M/yyyy")</div>
+            <div><span>إلى تاريخ:</span> @Model.ToDate.ToString("d/M/yyyy")</div>
+            <div><span>الهاتف:</span> @site?.Phone</div>
+        </div>
+    </div>
+
+    <div class="clinic">العيادة: @title</div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:80px">رقم الحالة</th>
+                <th>اسم الحالة</th>
+                <th>الطبيب</th>
+                <th>المنتج</th>
+                <th style="width:60px">العدد</th>
+                <th style="width:80px">السعر</th>
+                <th style="width:90px">الإجمالي</th>
+            </tr>
+        </thead>
+        @foreach (var group in Model.Lines.GroupBy(l => l.DoctorName ?? "بدون طبيب").OrderBy(g => g.Key))
+        {
+            <tbody>
+                @if (Model.Doctor == null)
+                {
+                    <tr class="doctor-row">
+                        <th colspan="4">@group.Key</th>
+                        <th>@group.Sum(l => l.Quantity)</th>
+                        <th></th>
+                        <th>@group.Sum(l => l.LineTotal).ToString("N2")</th>
+                    </tr>
+                }
+                @foreach (var line in group.OrderBy(l => l.CaseNumber))
+                {
+                    <tr class="@(line.IsRemake ? "remake" : "")">
+                        <td>@line.CaseNumber</td>
+                        <td>@line.PatientName</td>
+                        <td>@line.DoctorName</td>
+                        <td>@line.ProductName</td>
+                        <td>@line.Quantity</td>
+                        <td>@line.UnitPrice.ToString("N2")</td>
+                        <td>@line.LineTotal.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        }
+        <tfoot>
+            <tr>
+                <th colspan="4">عدد الوحدات</th>
+                <th>@Model.TotalUnits</th>
+                <th>إجمالي الفاتورة</th>
+                <th>@Model.TotalAmount.ToString("N2")</th>
+            </tr>
+        </tfoot>
+    </table>
+
+    @if (!string.IsNullOrWhiteSpace(site?.BankAccountNumber))
+    {
+        <div class="bank">
+            <div><strong>اسم صاحب الحساب:</strong> @site.BankAccountName</div>
+            <div><strong>المصرف:</strong> @site.BankName</div>
+            <div><strong>رقم الحساب:</strong> <span dir="ltr">@site.BankAccountNumber</span></div>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Model.Notes))
+    {
+        <div class="bank"><strong>ملاحظات:</strong> @Model.Notes</div>
+    }
+</body>
+</html>

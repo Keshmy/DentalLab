@@ -1,0 +1,18 @@
+@model LabCaseFormVM
+@{
+    ViewData["Title"] = "حالة جديدة";
+}
+
+<h4 class="mb-3">إضافة حالة</h4>
+<form asp-action="Create" method="post">
+    <partial name="_CaseForm" model="Model" />
+    <div class="mb-4">
+        <button class="btn btn-primary px-5">حفظ</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <partial name="_CaseFormScripts" />
+}

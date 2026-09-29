@@ -1,0 +1,16 @@
+@model Employee
+@{ ViewData["Title"] = "تعديل موظف"; }
+<form asp-action="EditEmployee" method="post" class="col-md-6">
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" asp-for="UserId" />
+    <input type="hidden" asp-for="Created" />
+    <p>البريد: @Model.ApplicationUser?.Email</p>
+    <div class="mb-3"><label asp-for="Name"></label><input asp-for="Name" class="form-control" /></div>
+    <div class="mb-3"><label asp-for="WorkPhone"></label><input asp-for="WorkPhone" class="form-control" /></div>
+    <div class="mb-3"><label asp-for="Address"></label><input asp-for="Address" class="form-control" /></div>
+    <div class="mb-3"><label asp-for="YearsOfExperience"></label><input asp-for="YearsOfExperience" class="form-control" /></div>
+    <div class="mb-3"><label asp-for="Specialization"></label><input asp-for="Specialization" class="form-control" /></div>
+    <div class="mb-3"><label asp-for="Bio"></label><textarea asp-for="Bio" class="form-control"></textarea></div>
+    <button class="btn btn-primary">حفظ</button>
+    <a asp-action="ChangeEmployeeApproval" asp-route-userId="@Model.UserId" class="btn btn-outline-warning">تبديل الموافقة</a>
+</form>

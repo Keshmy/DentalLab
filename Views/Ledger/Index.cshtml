@@ -1,0 +1,125 @@
+@model LedgerFilterVM
+@{
+    ViewData["Title"] = "سجل الصندوق";
+    var monthNames = new[] { "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر" };
+}
+<partial name="Partial/_datatables-css" />
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">سجل الصندوق — @monthNames[Model.Month - 1] @Model.Year</h3>
+    <a asp-controller="Finance" asp-action="Index" class="btn btn-outline-primary">الأرباح والخسائر</a>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-3">
+        <select name="year" class="form-select">
+            @foreach (var y in Model.AvailableYears)
+            {
+                <option value="@y" selected="@(y == Model.Year)">@y</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select name="month" class="form-select">
+            @for (int m = 1; m <= 12; m++)
+            {
+                <option value="@m" selected="@(m == Model.Month)">@monthNames[m - 1]</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-3">
+        <button class="btn btn-outline-primary">عرض</button>
+    </div>
+</form>
+
+<div class="row g-2 mb-3">
+    <div class="col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="small text-muted">رصيد أول الشهر</div>
+            <div class="fs-5 fw-bold">@Model.OpeningBalance.ToString("N2")</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-success"><div class="card-body py-2">
+            <div class="small text-muted">الداخل</div>
+            <div class="fs-5 fw-bold text-success">@Model.TotalIn.ToString("N2")</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-danger"><div class="card-body py-2">
+            <div class="small text-muted">الخارج</div>
+            <div class="fs-5 fw-bold text-danger">@Model.TotalOut.ToString("N2")</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-primary"><div class="card-body py-2">
+            <div class="small text-muted">رصيد آخر الشهر</div>
+            <div class="fs-5 fw-bold text-primary">@Model.ClosingBalance.ToString("N2")</div>
+        </div></div>
+    </div>
+</div>
+
+@if (Model.PendingIncome > 0)
+{
+    <div class="alert alert-warning">
+        يوجد <strong>@Model.PendingIncome.ToString("N2")</strong> مفوتر لم يُستلم بعد في هذا الشهر —
+        لا يدخل الصندوق ويُحسب ديناً على العيادات.
+    </div>
+}
+
+<table id="ledgerTable" class="table table-striped table-bordered w-100">
+    <thead>
+        <tr>
+            <th>التاريخ</th>
+            <th>النوع</th>
+            <th>البيان</th>
+            <th>الحساب</th>
+            <th>داخل</th>
+            <th>خارج</th>
+            <th>الرصيد</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var row in Model.Rows)
+        {
+            <tr class="@(row.IsPending ? "table-warning" : "")">
+                <td>@row.Date?.ToString("yyyy/M/d")</td>
+                <td>@row.Kind</td>
+                <td>
+                    @row.Description
+                    @if (row.IsPending)
+                    {
+                        <span class="badge bg-warning text-dark">غير مُستلم / غير مدفوع</span>
+                    }
+                </td>
+                <td>@row.Account</td>
+                <td class="text-success">@(row.In == 0 ? "" : row.In.ToString("N2"))</td>
+                <td class="text-danger">@(row.Out == 0 ? "" : row.Out.ToString("N2"))</td>
+                <td>@row.Balance.ToString("N2")</td>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr class="table-light fw-bold">
+            <th colspan="4" class="text-end">الإجمالي</th>
+            <th>@Model.TotalIn.ToString("N2")</th>
+            <th>@Model.TotalOut.ToString("N2")</th>
+            <th>@Model.ClosingBalance.ToString("N2")</th>
+        </tr>
+    </tfoot>
+</table>
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/2.3.4/js/dataTables.js"></script>
+    <script src="https://cdn.datatables.net/2.3.4/js/dataTables.bootstrap5.js"></script>
+    <script>
+        // الترتيب معطّل: السجل زمني والرصيد المتحرك يعتمد على ترتيب الصفوف
+        $(function () {
+            $('#ledgerTable').DataTable({
+                language: { url: 'https://cdn.datatables.net/plug-ins/2.0.8/i18n/ar.json' },
+                pageLength: 50,
+                ordering: false
+            });
+        });
+    </script>
+}

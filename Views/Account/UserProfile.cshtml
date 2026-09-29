@@ -1,0 +1,32 @@
+@model UserProfile
+@{
+    ViewData["Title"] = "الملف الشخصي";
+    ViewData["Layout"] = "_LayoutDashboard";
+}
+
+<div class="col-md-6">
+    <h4>الملف الشخصي — @ViewBag.Email</h4>
+    <form asp-action="UserProfile" method="post" enctype="multipart/form-data">
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="UserId" />
+        <input type="hidden" asp-for="ImageUrl" />
+        <div class="mb-3">
+            <label asp-for="DisplayName"></label>
+            <input asp-for="DisplayName" class="form-control" />
+            <span asp-validation-for="DisplayName" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label>الصورة</label>
+            <input type="file" asp-for="Image" class="form-control" />
+            <input type="hidden" name="isImg1" value="1" />
+        </div>
+        <div class="mb-3">
+            <label>الجنس</label>
+            <select name="gender" class="form-select">
+                <option value="true">ذكر</option>
+                <option value="false">أنثى</option>
+            </select>
+        </div>
+        <button class="btn btn-primary">حفظ</button>
+    </form>
+</div>

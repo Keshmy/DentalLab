@@ -1,0 +1,35 @@
+@model SiteInfo
+@{
+    ViewData["Title"] = "بيانات المختبر";
+}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">بيانات المختبر</h4>
+    <a asp-action="SiteEdit" class="btn btn-primary">تعديل</a>
+</div>
+
+<div class="card col-lg-8">
+    <table class="table mb-0">
+        <tr><th style="width:220px">اسم المختبر</th><td>@Model.Name</td></tr>
+        <tr><th>النشاط</th><td>@Model.Activity</td></tr>
+        <tr><th>الهاتف</th><td dir="ltr">@Model.Phone</td></tr>
+        <tr><th>نبذة</th><td>@Model.About</td></tr>
+        <tr><th>اسم صاحب الحساب</th><td>@Model.BankAccountName</td></tr>
+        <tr><th>المصرف</th><td>@Model.BankName</td></tr>
+        <tr><th>رقم الحساب</th><td dir="ltr">@Model.BankAccountNumber</td></tr>
+        <tr><th>الشريك</th><td>@Model.PartnerName</td></tr>
+        <tr><th>نسبة الشريك</th><td>@Model.PartnerSharePercent.ToString("N2")٪</td></tr>
+        <tr>
+            <th>الشعار</th>
+            <td>
+                @if (!string.IsNullOrWhiteSpace(Model.LogoUrl))
+                {
+                    <img src="~/upload/@Model.LogoUrl" alt="شعار" style="height:64px" />
+                }
+                else
+                {
+                    <span class="text-muted">لا يوجد</span>
+                }
+            </td>
+        </tr>
+    </table>
+</div>

@@ -1,0 +1,10 @@
+@model Doctor
+@{ ViewData["Title"] = "طبيب جديد"; }
+<form asp-action="Create" method="post" class="col-md-6">
+    <div class="mb-3"><label asp-for="Name"></label><input asp-for="Name" class="form-control" /><span asp-validation-for="Name" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="Phone"></label><input asp-for="Phone" class="form-control" /></div>
+    <div class="mb-3"><label asp-for="Notes"></label><input asp-for="Notes" class="form-control" /></div>
+    <button class="btn btn-primary">حفظ</button>
+    <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+</form>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

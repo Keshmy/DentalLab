@@ -1,0 +1,88 @@
+@model IncomeEntry
+@{
+    ViewData["Title"] = "تعديل إيراد";
+}
+
+<h4 class="mb-3">تعديل إيراد / تحصيل</h4>
+
+<div class="alert alert-info">
+    الإيراد غير المستلم يبقى ديناً على المركز ولا يدخل الصندوق.
+</div>
+
+<form asp-action="Edit" method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+    <input type="hidden" asp-for="Id" />
+
+    <div class="card mb-3">
+        <div class="card-body row g-3">
+            <div class="col-md-3">
+                <label asp-for="Date" class="form-label"></label>
+                <input asp-for="Date" class="form-control" />
+                <span asp-validation-for="Date" class="text-danger"></span>
+            </div>
+            <div class="col-md-2">
+                <label asp-for="Year" class="form-label required"></label>
+                <input asp-for="Year" type="number" inputmode="numeric" min="2000" max="2100" step="1" class="form-control js-int" />
+                <span asp-validation-for="Year" class="text-danger"></span>
+            </div>
+            <div class="col-md-2">
+                <label asp-for="Month" class="form-label required"></label>
+                <input asp-for="Month" type="number" inputmode="numeric" min="1" max="12" step="1" class="form-control js-int" />
+                <span asp-validation-for="Month" class="text-danger"></span>
+            </div>
+            <div class="col-md-5">
+                <label asp-for="Description" class="form-label required"></label>
+                <input asp-for="Description" class="form-control" />
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-3">
+                <label asp-for="Amount" class="form-label required"></label>
+                <input asp-for="Amount" type="number" inputmode="decimal" step="0.01" min="0.01" class="form-control js-money" />
+                <span asp-validation-for="Amount" class="text-danger"></span>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="ClinicId" class="form-label"></label>
+                <select asp-for="ClinicId" class="form-select" asp-items="ViewBag.Clinics">
+                    <option value="">— بدون مركز —</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="FinancialAccountId" class="form-label"></label>
+                <select asp-for="FinancialAccountId" class="form-select" asp-items="ViewBag.Accounts">
+                    <option value="">— بدون حساب —</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Method" class="form-label"></label>
+                <select asp-for="Method" class="form-select" asp-items="ViewBag.Methods">
+                    <option value="">— اختر —</option>
+                </select>
+            </div>
+
+            <div class="col-md-3 d-flex align-items-end">
+                <div class="form-check mb-2">
+                    <input asp-for="IsReceived" class="form-check-input" />
+                    <label asp-for="IsReceived" class="form-check-label"></label>
+                </div>
+            </div>
+            <div class="col-md-9">
+                <label asp-for="Notes" class="form-label"></label>
+                <input asp-for="Notes" class="form-control" />
+            </div>
+        </div>
+        <div class="card-footer small text-muted">
+            ربط الإيراد بالفاتورة يتم من شاشة الفواتير، فلا يُدخل هنا.
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <button class="btn btn-primary px-5">حفظ</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <partial name="_NumericInputScripts" />
+}

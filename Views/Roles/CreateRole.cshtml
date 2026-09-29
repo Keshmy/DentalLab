@@ -1,0 +1,6 @@
+@model CreateRoleVM
+@{ ViewData["Title"] = "صلاحية جديدة"; }
+<form asp-action="CreateRole" method="post" class="col-md-6">
+    <div class="mb-3"><label asp-for="Name"></label><input asp-for="Name" class="form-control" /></div>
+    <button class="btn btn-primary">حفظ</button>
+</form>

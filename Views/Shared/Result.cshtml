@@ -1,0 +1,27 @@
+@{
+    ViewBag.Title = "نتيجة";
+}
+
+<div class="container pt-5 mt-5" style="min-height:65vh">
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="card shadow border-0 rounded-4">
+                <div class="card-body text-center p-5">
+                    @if (ViewBag.SuccessTitle != null || ViewBag.SuccessMessage != null)
+                    {
+                        <h3 class="fw-bold text-success">@ViewBag.SuccessTitle</h3>
+                        <hr />
+                        <p class="fs-5">@ViewBag.SuccessMessage</p>
+                    }
+                    else
+                    {
+                        <h3 class="fw-bold text-danger">@ViewBag.ErrorTitle</h3>
+                        <hr />
+                        <p class="fs-5">@ViewBag.ErrorMessage</p>
+                    }
+                    <a asp-controller="Admin" asp-action="Index" class="btn btn-primary mt-3">لوحة التحكم</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,89 @@
+@model LoanTransaction
+@{
+    ViewData["Title"] = "تعديل حركة سلفة";
+}
+
+<h4 class="mb-3">تعديل حركة سلفة</h4>
+
+<div class="alert alert-info">
+    السلفة ليست مصروفًا: تنقص الصندوق وتُسجَّل ذمة على الشخص، ولا تنقص الربح إلا إذا شُطبت (دين معدوم).
+</div>
+
+<form asp-action="Edit" method="post" id="loanForm" novalidate>
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+    <input type="hidden" asp-for="Id" />
+
+    <div class="card mb-3">
+        <div class="card-body row g-3">
+            <div class="col-md-3">
+                <label asp-for="Date" class="form-label"></label>
+                <input asp-for="Date" class="form-control" />
+                <span asp-validation-for="Date" class="text-danger"></span>
+            </div>
+            <div class="col-md-2">
+                <label asp-for="Year" class="form-label required"></label>
+                <input asp-for="Year" type="number" inputmode="numeric" min="2000" max="2100" step="1" class="form-control js-int" />
+                <span asp-validation-for="Year" class="text-danger"></span>
+            </div>
+            <div class="col-md-2">
+                <label asp-for="Month" class="form-label required"></label>
+                <input asp-for="Month" type="number" inputmode="numeric" min="1" max="12" step="1" class="form-control js-int" />
+                <span asp-validation-for="Month" class="text-danger"></span>
+            </div>
+            <div class="col-md-5">
+                <label asp-for="PersonName" class="form-label required"></label>
+                <input asp-for="PersonName" class="form-control" placeholder="اسم الشخص — أو اختر موظفاً بالأسفل" />
+                <span asp-validation-for="PersonName" class="text-danger"></span>
+                <div class="form-text">مطلوب: اكتب الاسم أو اختر موظفاً ليملأ تلقائياً.</div>
+            </div>
+
+            <div class="col-md-3">
+                <label asp-for="EmployeeId" class="form-label"></label>
+                <select asp-for="EmployeeId" class="form-select" asp-items="ViewBag.Employees" id="EmployeeId">
+                    <option value="">— شخص من خارج الموظفين —</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Amount" class="form-label required"></label>
+                <input asp-for="Amount" type="number" inputmode="decimal" step="0.01" min="0.01" class="form-control js-money" />
+                <span asp-validation-for="Amount" class="text-danger"></span>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Direction" class="form-label required"></label>
+                <select asp-for="Direction" class="form-select" asp-items="ViewBag.Directions"></select>
+                <span asp-validation-for="Direction" class="text-danger"></span>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="FinancialAccountId" class="form-label"></label>
+                <select asp-for="FinancialAccountId" class="form-select" asp-items="ViewBag.Accounts">
+                    <option value="">— بدون حساب —</option>
+                </select>
+            </div>
+
+            <div class="col-md-9">
+                <label asp-for="Description" class="form-label"></label>
+                <input asp-for="Description" class="form-control" />
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <div class="form-check mb-2">
+                    <input asp-for="IsWrittenOff" class="form-check-input" />
+                    <label asp-for="IsWrittenOff" class="form-check-label"></label>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer small text-muted">
+            الأرصدة تُجمَّع باسم الشخص، فاكتب الاسم نفسه في كل حركاته حتى يُحسب رصيده صحيحاً.
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <button type="submit" class="btn btn-primary px-5">حفظ</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <partial name="_NumericInputScripts" />
+    <partial name="_LoanFormScripts" />
+}

@@ -1,0 +1,62 @@
+@model List<DentalLab.ViewModels.Finance.DoctorPriceSummaryVM>
+@{
+    ViewData["Title"] = "أسعار الأطباء";
+}
+<partial name="Partial/_datatables-css" />
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">أسعار الأطباء وربحيتهم</h3>
+    <a asp-controller="ServiceTypes" asp-action="Index" class="btn btn-outline-primary">الأسعار العامة</a>
+</div>
+
+<div class="alert alert-light border">
+    السعر المطبَّق على أي سطر = <strong>السعر الخاص بالطبيب</strong> إن وُجد، وإلا <strong>السعر العام</strong>.
+    مثال: السعر العام 130 ولطبيب معيّن 120 → تُفوتر حالاته بـ 120.
+</div>
+
+<table id="table1" class="table table-striped table-bordered w-100">
+    <thead>
+        <tr>
+            <th>الطبيب</th>
+            <th>أسعار خاصة</th>
+            <th>الحالات</th>
+            <th>إجمالي الأعمال</th>
+            <th>تكلفة المواد</th>
+            <th>الربح الإجمالي</th>
+            <th>الهامش</th>
+            <th>وحدات إعادة</th>
+            <th>خسارة إعادات</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var d in Model)
+        {
+            <tr>
+                <td>@d.DoctorName</td>
+                <td>
+                    @if (d.OverrideCount > 0)
+                    {
+                        <span class="badge bg-primary">@d.OverrideCount</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">السعر العام</span>
+                    }
+                </td>
+                <td>@d.CaseCount</td>
+                <td>@d.Revenue.ToString("N2")</td>
+                <td>@d.MaterialCost.ToString("N2")</td>
+                <td class="@(d.GrossMargin >= 0 ? "text-success" : "text-danger")">@d.GrossMargin.ToString("N2")</td>
+                <td>@d.MarginPercent%</td>
+                <td>@d.RemakeUnits</td>
+                <td class="@(d.FreeRemakeCost > 0 ? "text-danger" : "")">@d.FreeRemakeCost.ToString("N2")</td>
+                <td>
+                    <a asp-action="Manage" asp-route-id="@d.DoctorId" class="btn btn-sm btn-outline-primary">الأسعار</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@section Scripts { <partial name="Partial/_datatables-js" /> }

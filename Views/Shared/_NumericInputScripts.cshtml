@@ -1,0 +1,37 @@
+<script>
+(function () {
+    function digitsOnly(value, allowDot) {
+        var cleaned = '';
+        var dotSeen = false;
+        for (var i = 0; i < value.length; i++) {
+            var ch = value.charAt(i);
+            if (ch >= '0' && ch <= '9') cleaned += ch;
+            else if (allowDot && ch === '.' && !dotSeen) {
+                cleaned += ch;
+                dotSeen = true;
+            }
+        }
+        return cleaned;
+    }
+
+    function bindNumeric(selector, allowDot) {
+        document.querySelectorAll(selector).forEach(function (el) {
+            el.addEventListener('input', function () {
+                var next = digitsOnly(el.value, allowDot);
+                if (el.value !== next) el.value = next;
+            });
+            el.addEventListener('keydown', function (e) {
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                var allowed = ['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'Home', 'End'];
+                if (allowed.indexOf(e.key) >= 0) return;
+                if (e.key >= '0' && e.key <= '9') return;
+                if (allowDot && e.key === '.' && el.value.indexOf('.') < 0) return;
+                e.preventDefault();
+            });
+        });
+    }
+
+    bindNumeric('.js-int', false);
+    bindNumeric('.js-money', true);
+})();
+</script>

@@ -1,0 +1,75 @@
+@model ImportResultVM
+@{
+    ViewData["Title"] = "نتيجة الاستيراد";
+}
+<h4 class="mb-3">نتيجة الاستيراد</h4>
+
+<div class="row g-3">
+    @if (Model.CasesImported > 0 || Model.PricesImported > 0)
+    {
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><strong>أرشيف الحالات</strong></div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">أسعار مستوردة: @Model.PricesImported (تخطي @Model.PricesSkipped)</li>
+                    <li class="list-group-item">أطباء جدد: @Model.DoctorsCreated</li>
+                    <li class="list-group-item">مراكز جديدة: @Model.ClinicsCreated</li>
+                    <li class="list-group-item">حالات مستوردة: @Model.CasesImported (تخطي @Model.CasesSkipped)</li>
+                    <li class="list-group-item">أسطر مستوردة: @Model.ItemsImported</li>
+                    <li class="list-group-item">أسطر أُضيفت لحالة موجودة (رقم حالة مكرَّر): @Model.ItemsMergedIntoExistingCase</li>
+                    <li class="list-group-item">أسطر سُعِّرت من قائمة الأسعار: @Model.ItemsPricedFromList</li>
+                    @if (Model.ItemsWithoutPrice > 0)
+                    {
+                        <li class="list-group-item list-group-item-warning">أسطر بلا سعر — تحتاج تسعيراً يدوياً: @Model.ItemsWithoutPrice</li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+
+    @if (Model.IncomeImported > 0 || Model.ExpensesImported > 0 || Model.LoansImported > 0)
+    {
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header"><strong>الإيرادات والمصاريف</strong></div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        إيرادات: @Model.IncomeImported سطر
+                        <span class="float-start fw-bold">@Model.IncomeTotal.ToString("N2")</span>
+                    </li>
+                    <li class="list-group-item">
+                        مصاريف: @Model.ExpensesImported سطر
+                        <span class="float-start fw-bold">@Model.ExpensesTotal.ToString("N2")</span>
+                    </li>
+                    <li class="list-group-item">
+                        سلف: @Model.LoansImported سطر
+                        <span class="float-start fw-bold">@Model.LoansTotal.ToString("N2")</span>
+                    </li>
+                    <li class="list-group-item">
+                        الصافي
+                        <span class="float-start fw-bold">@((Model.IncomeTotal - Model.ExpensesTotal).ToString("N2"))</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    }
+</div>
+
+@if (Model.Warnings.Any())
+{
+    <div class="card mt-3">
+        <div class="card-header bg-warning-subtle"><strong>تحتاج مراجعتك (@Model.Warnings.Count)</strong></div>
+        <ul class="list-group list-group-flush">
+            @foreach (var w in Model.Warnings)
+            {
+                <li class="list-group-item">@w</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="mt-3">
+    <a asp-controller="LabCases" asp-action="Index" class="btn btn-primary">الحالات</a>
+    <a asp-controller="Finance" asp-action="Index" class="btn btn-outline-primary">الأرباح والخسائر</a>
+    <a asp-action="Index" class="btn btn-outline-secondary">لوحة التحكم</a>
+</div>

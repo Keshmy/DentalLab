@@ -1,0 +1,132 @@
+@model IEnumerable<IncomeEntry>
+@{
+    ViewData["Title"] = "الإيرادات والتحصيلات";
+    var monthNames = new[] { "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر" };
+    var rows = Model ?? Enumerable.Empty<IncomeEntry>();
+    var total = rows.Sum(e => e.Amount);
+    var received = rows.Where(e => e.IsReceived).Sum(e => e.Amount);
+    var pending = total - received;
+    var filterYear = (int?)ViewBag.Year;
+    var filterMonth = (int?)ViewBag.Month;
+}
+<partial name="Partial/_datatables-css" />
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">الإيرادات والتحصيلات</h3>
+    <a asp-action="Create" class="btn btn-primary">إيراد جديد</a>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-2">
+        <select name="year" class="form-select" asp-items="ViewBag.Years">
+            <option value="">كل السنوات</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select name="month" class="form-select">
+            <option value="">كل الأشهر</option>
+            @for (int m = 1; m <= 12; m++)
+            {
+                <option value="@m" selected="@(filterMonth == m)">@monthNames[m - 1]</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select name="clinicId" class="form-select" asp-items="ViewBag.Clinics">
+            <option value="">كل المراكز</option>
+        </select>
+    </div>
+    <div class="col-md-2 d-flex align-items-center">
+        <div class="form-check">
+            <input type="checkbox" name="pendingOnly" value="true" class="form-check-input" id="pendingOnly" checked="@((bool?)ViewBag.PendingOnly == true)" />
+            <label class="form-check-label" for="pendingOnly">غير المُحصَّل فقط</label>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <button class="btn btn-outline-primary">تصفية</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">إعادة</a>
+    </div>
+</form>
+
+<div class="row g-2 mb-3">
+    <div class="col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="small text-muted">الإجمالي</div>
+            <div class="fs-5 fw-bold">@total.ToString("N2")</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-success"><div class="card-body py-2">
+            <div class="small text-muted">المُحصَّل</div>
+            <div class="fs-5 fw-bold text-success">@received.ToString("N2")</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-warning"><div class="card-body py-2">
+            <div class="small text-muted">غير المُحصَّل (ديون)</div>
+            <div class="fs-5 fw-bold text-warning">@pending.ToString("N2")</div>
+        </div></div>
+    </div>
+</div>
+
+<table id="table1" class="table table-striped table-bordered table-hover w-100">
+    <thead>
+        <tr>
+            <th>التاريخ</th>
+            <th>البيان</th>
+            <th>المركز</th>
+            <th>المبلغ</th>
+            <th>طريقة الدفع</th>
+            <th>الحساب</th>
+            <th>الفاتورة</th>
+            <th>مستلم؟</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var e in rows)
+        {
+            <tr class="@(e.IsReceived ? "" : "table-warning")">
+                <td>@(e.Date?.ToString("yyyy/M/d") ?? $"{e.Year}/{e.Month}")</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@e.Id">@e.Description</a>
+                    @if (!e.IsReceived)
+                    {
+                        <span class="badge bg-warning text-dark">غير مُستلم</span>
+                    }
+                </td>
+                <td>@e.Clinic?.Name</td>
+                <td data-order="@e.Amount">@e.Amount.ToString("N2")</td>
+                <td>@e.Method</td>
+                <td>@e.FinancialAccount?.Name</td>
+                <td>@(e.Invoice != null ? e.Invoice.Number.ToString() : "")</td>
+                <td>
+                    @if (e.IsReceived)
+                    {
+                        <span class="badge bg-success">مستلم</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">لا</span>
+                    }
+                </td>
+                <td>
+                    @if (!e.IsReceived)
+                    {
+                        <form asp-action="MarkReceived" asp-route-id="@e.Id" asp-route-year="@filterYear" asp-route-month="@filterMonth" method="post" class="d-inline">
+                            <button class="btn btn-sm btn-outline-success">تأكيد الاستلام</button>
+                        </form>
+                    }
+                    <a asp-action="Edit" asp-route-id="@e.Id" class="btn btn-sm btn-outline-secondary">تعديل</a>
+                    <form asp-action="Delete" asp-route-id="@e.Id" method="post" class="d-inline" onsubmit="return confirm('حذف؟');">
+                        <button class="btn btn-sm btn-outline-danger">حذف</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@section Scripts {
+    <partial name="Partial/_datatables-js" />
+}

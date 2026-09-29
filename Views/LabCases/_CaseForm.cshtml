@@ -1,0 +1,192 @@
+@model LabCaseFormVM
+@{
+    var services = ViewBag.ServiceList as List<ServiceType> ?? [];
+}
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+<input type="hidden" asp-for="Id" />
+
+@if (Model.IsInvoiced)
+{
+    <div class="alert alert-warning">
+        هذه الحالة مُفوترة في الفاتورة رقم <strong>@Model.InvoiceNumber</strong>.
+        تعديل الأسطر الآن لن يغيّر الفاتورة الصادرة — ألغِ الفاتورة وأصدرها من جديد إن أردت تحديثها.
+    </div>
+}
+
+<div class="card mb-3">
+    <div class="card-body row g-3">
+        <div class="col-md-2">
+            <label asp-for="CaseNumber" class="form-label"></label>
+            <input asp-for="CaseNumber" class="form-control" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="PatientName" class="form-label"></label>
+            <input asp-for="PatientName" class="form-control" />
+            <span asp-validation-for="PatientName" class="text-danger"></span>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="DoctorId" class="form-label"></label>
+            <select asp-for="DoctorId" id="DoctorId" class="form-select" asp-items="ViewBag.Doctors">
+                <option value="">—</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="ClinicId" class="form-label"></label>
+            <select asp-for="ClinicId" class="form-select" asp-items="ViewBag.Clinics">
+                <option value="">—</option>
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label asp-for="ReceivedDate" class="form-label"></label>
+            <input asp-for="ReceivedDate" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="DeliveryDate" class="form-label"></label>
+            <input asp-for="DeliveryDate" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="ToothPosition" class="form-label"></label>
+            <input asp-for="ToothPosition" class="form-control" placeholder="6 5 4 | 1 2 3" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Status" class="form-label"></label>
+            <select asp-for="Status" class="form-select" asp-items="ViewBag.Statuses"></select>
+        </div>
+
+        <div class="col-md-2">
+            <label asp-for="Year" class="form-label"></label>
+            <input asp-for="Year" class="form-control" />
+        </div>
+        <div class="col-md-2">
+            <label asp-for="Month" class="form-label"></label>
+            <input asp-for="Month" class="form-control" />
+        </div>
+        <div class="col-md-2">
+            <label asp-for="DocumentNumber" class="form-label"></label>
+            <input asp-for="DocumentNumber" class="form-control" />
+        </div>
+        <div class="col-md-2">
+            <label asp-for="ReceiptNumber" class="form-label"></label>
+            <input asp-for="ReceiptNumber" class="form-control" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Notes" class="form-label"></label>
+            <input asp-for="Notes" class="form-control" />
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>أسطر الحالة (المنتجات)</strong>
+        <div>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="addRow">+ سطر</button>
+            <button type="button" class="btn btn-sm btn-outline-warning" id="addRemake">+ إعادة</button>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered mb-0 align-middle" id="itemsTable">
+            <thead>
+                <tr>
+                    <th style="min-width:210px">المنتج</th>
+                    <th style="min-width:150px">وصف بديل</th>
+                    <th style="width:90px">العدد</th>
+                    <th style="width:110px">السعر</th>
+                    <th style="width:110px">التكلفة</th>
+                    <th style="width:190px">إعادة / السبب</th>
+                    <th style="width:110px">الإجمالي</th>
+                    <th style="width:50px"></th>
+                </tr>
+            </thead>
+            <tbody id="itemsBody">
+                @for (int i = 0; i < Model.Items.Count; i++)
+                {
+                    var item = Model.Items[i];
+                    <tr class="item-row">
+                        <td>
+                            <input type="hidden" name="Items.Index" value="@i" />
+                            <select name="Items[@i].ServiceTypeId" class="form-select js-service">
+                                <option value="">— اختر المنتج —</option>
+                                @foreach (var s in services)
+                                {
+                                    <option value="@s.Id" selected="@(item.ServiceTypeId == s.Id)">@s.Name</option>
+                                }
+                            </select>
+                        </td>
+                        <td><input name="Items[@i].ProductName" value="@item.ProductName" class="form-control" placeholder="اختياري" /></td>
+                        <td><input name="Items[@i].Quantity" value="@item.Quantity" type="number" min="1" class="form-control js-qty" /></td>
+                        <td><input name="Items[@i].UnitPrice" value="@item.UnitPrice" type="number" step="0.01" min="0" class="form-control js-price" /></td>
+                        <td><input name="Items[@i].UnitCost" value="@item.UnitCost" type="number" step="0.01" min="0" class="form-control js-cost" /></td>
+                        <td>
+                            <div class="form-check mb-1">
+                                <input type="checkbox" name="Items[@i].IsRemake" value="true" class="form-check-input js-remake" checked="@item.IsRemake" id="remake_@i" />
+                                <input type="hidden" name="Items[@i].IsRemake" value="false" />
+                                <label class="form-check-label" for="remake_@i">إعادة</label>
+                            </div>
+                            <select name="Items[@i].RemakeReason" class="form-select form-select-sm js-reason" disabled="@(!item.IsRemake)">
+                                <option value="">— السبب —</option>
+                                @foreach (var r in RemakeReason.All)
+                                {
+                                    <option value="@r" selected="@(item.RemakeReason == r)">@r</option>
+                                }
+                            </select>
+                        </td>
+                        <td class="text-end"><span class="js-total">@item.LineTotal.ToString("N2")</span></td>
+                        <td><button type="button" class="btn btn-sm btn-outline-danger js-remove">×</button></td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="table-light">
+                    <th colspan="2" class="text-end">الإجمالي</th>
+                    <th><span id="sumQty">0</span></th>
+                    <th colspan="3"></th>
+                    <th class="text-end"><span id="sumTotal">0.00</span></th>
+                    <th></th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    <div class="card-footer small text-muted">
+        السعر يُجلب تلقائياً: السعر الخاص بالطبيب إن وُجد، وإلا السعر العام. ويمكنك تعديله لهذا السطر فقط.
+        <br />
+        الإعادة: الأولى على المعمل بسعر صفر، والثانية وما بعدها على الطبيب — ويمكن تغيير السعر يدوياً.
+    </div>
+</div>
+
+<template id="rowTemplate">
+    <tr class="item-row">
+        <td>
+            <input type="hidden" name="Items.Index" value="__i__" />
+            <select name="Items[__i__].ServiceTypeId" class="form-select js-service">
+                <option value="">— اختر المنتج —</option>
+                @foreach (var s in services)
+                {
+                    <option value="@s.Id">@s.Name</option>
+                }
+            </select>
+        </td>
+        <td><input name="Items[__i__].ProductName" class="form-control" placeholder="اختياري" /></td>
+        <td><input name="Items[__i__].Quantity" value="1" type="number" min="1" class="form-control js-qty" /></td>
+        <td><input name="Items[__i__].UnitPrice" value="0" type="number" step="0.01" min="0" class="form-control js-price" /></td>
+        <td><input name="Items[__i__].UnitCost" value="0" type="number" step="0.01" min="0" class="form-control js-cost" /></td>
+        <td>
+            <div class="form-check mb-1">
+                <input type="checkbox" name="Items[__i__].IsRemake" value="true" class="form-check-input js-remake" />
+                <input type="hidden" name="Items[__i__].IsRemake" value="false" />
+                <label class="form-check-label">إعادة</label>
+            </div>
+            <select name="Items[__i__].RemakeReason" class="form-select form-select-sm js-reason" disabled>
+                <option value="">— السبب —</option>
+                @foreach (var r in RemakeReason.All)
+                {
+                    <option value="@r">@r</option>
+                }
+            </select>
+        </td>
+        <td class="text-end"><span class="js-total">0.00</span></td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger js-remove">×</button></td>
+    </tr>
+</template>

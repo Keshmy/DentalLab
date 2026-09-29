@@ -1,0 +1,15 @@
+@{
+    ViewData["Title"] = "غير موجود";
+}
+
+<div class="container text-center pt-5 mt-5">
+    <div class="alert alert-danger shadow">
+        <h4>@(ViewBag.Message ?? "المورد المطلوب غير موجود")</h4>
+        @if (ViewBag.Path != null)
+        {
+            <hr />
+            <h6>@ViewBag.Path</h6>
+        }
+        <a asp-action="Index" asp-controller="Home" class="btn btn-light mt-3">العودة</a>
+    </div>
+</div>

@@ -1,0 +1,11 @@
+@model Clinic
+@{ ViewData["Title"] = "تعديل عيادة"; }
+<form asp-action="Edit" method="post" class="col-md-6">
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" asp-for="Created" />
+    <div class="mb-3"><label asp-for="Name"></label><input asp-for="Name" class="form-control" /></div>
+    <div class="mb-3"><label asp-for="Address"></label><input asp-for="Address" class="form-control" /></div>
+    <div class="mb-3"><label asp-for="Phone"></label><input asp-for="Phone" class="form-control" /></div>
+    <button class="btn btn-primary">حفظ</button>
+    <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+</form>

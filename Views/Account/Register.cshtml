@@ -1,0 +1,29 @@
+@model RegisterVM
+@{
+    ViewData["Title"] = "تسجيل مستخدم";
+}
+
+<div class="container mt-4">
+    <h3>تسجيل مستخدم جديد</h3>
+    <form asp-action="Register" method="post" class="col-md-6">
+        <div asp-validation-summary="All" class="text-danger"></div>
+        <div class="mb-3">
+            <label asp-for="Email"></label>
+            <input asp-for="Email" class="form-control" />
+        </div>
+        <div class="mb-3">
+            <label asp-for="Password"></label>
+            <input asp-for="Password" class="form-control" />
+        </div>
+        <div class="mb-3">
+            <label asp-for="ConfirmPassword"></label>
+            <input asp-for="ConfirmPassword" class="form-control" />
+        </div>
+        <div class="mb-3">
+            <label asp-for="Age"></label>
+            <input asp-for="Age" class="form-control" />
+        </div>
+        <button class="btn btn-primary">حفظ</button>
+    </form>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

@@ -1,0 +1,123 @@
+<script>
+    (function () {
+        'use strict';
+
+        var body = document.getElementById('itemsBody');
+        var template = document.getElementById('rowTemplate');
+        var doctorSelect = document.getElementById('DoctorId');
+        if (!body || !template) return;
+
+        // فهرس تصاعدي مستقل عن ترتيب الصفوف — الحذف لا يكسر الربط
+        var nextIndex = body.querySelectorAll('.item-row').length;
+
+        function money(n) {
+            return (isFinite(n) ? n : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function recalc() {
+            var totalQty = 0, totalSum = 0;
+            body.querySelectorAll('.item-row').forEach(function (row) {
+                var qty = parseFloat(row.querySelector('.js-qty').value) || 0;
+                var price = parseFloat(row.querySelector('.js-price').value) || 0;
+                var line = qty * price;
+                row.querySelector('.js-total').textContent = money(line);
+                totalQty += qty;
+                totalSum += line;
+            });
+            document.getElementById('sumQty').textContent = totalQty;
+            document.getElementById('sumTotal').textContent = money(totalSum);
+        }
+
+        function addRow(isRemake) {
+            var html = template.innerHTML.replace(/__i__/g, nextIndex);
+            nextIndex++;
+
+            var wrapper = document.createElement('tbody');
+            wrapper.innerHTML = html.trim();
+            var row = wrapper.querySelector('.item-row');
+            body.appendChild(row);
+
+            if (isRemake) {
+                var check = row.querySelector('.js-remake');
+                check.checked = true;
+                applyRemake(row);
+            }
+            recalc();
+            return row;
+        }
+
+        function applyRemake(row) {
+            var isRemake = row.querySelector('.js-remake').checked;
+            var reason = row.querySelector('.js-reason');
+            reason.disabled = !isRemake;
+            if (isRemake) {
+                // الافتراضي: الإعادة على المعمل (صفر) — والمستخدم يعدّلها إن حاسب الطبيب
+                row.querySelector('.js-price').value = 0;
+            }
+            recalc();
+        }
+
+        function fetchPrice(row) {
+            var serviceId = row.querySelector('.js-service').value;
+            if (!serviceId) return;
+
+            var url = '@Url.Action("ServicePrice", "LabCases")' + '?id=' + encodeURIComponent(serviceId);
+            if (doctorSelect && doctorSelect.value) {
+                url += '&doctorId=' + encodeURIComponent(doctorSelect.value);
+            }
+
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (data) {
+                    if (!data) return;
+                    row.querySelector('.js-cost').value = data.cost;
+                    if (!row.querySelector('.js-remake').checked) {
+                        row.querySelector('.js-price').value = data.price;
+                    }
+                    recalc();
+                })
+                .catch(function () { });
+        }
+
+        document.getElementById('addRow').addEventListener('click', function () { addRow(false); });
+        document.getElementById('addRemake').addEventListener('click', function () { addRow(true); });
+
+        body.addEventListener('click', function (e) {
+            if (e.target.classList.contains('js-remove')) {
+                var rows = body.querySelectorAll('.item-row');
+                if (rows.length === 1) {
+                    // لا نترك الجدول فارغاً — نفرّغ السطر بدلاً من حذفه
+                    var row = rows[0];
+                    row.querySelector('.js-service').value = '';
+                    row.querySelector('.js-price').value = 0;
+                    row.querySelector('.js-cost').value = 0;
+                    row.querySelector('.js-qty').value = 1;
+                } else {
+                    e.target.closest('.item-row').remove();
+                }
+                recalc();
+            }
+        });
+
+        body.addEventListener('change', function (e) {
+            var row = e.target.closest('.item-row');
+            if (!row) return;
+            if (e.target.classList.contains('js-service')) fetchPrice(row);
+            if (e.target.classList.contains('js-remake')) applyRemake(row);
+        });
+
+        body.addEventListener('input', function (e) {
+            if (e.target.classList.contains('js-qty') || e.target.classList.contains('js-price')) recalc();
+        });
+
+        if (doctorSelect) {
+            doctorSelect.addEventListener('change', function () {
+                body.querySelectorAll('.item-row').forEach(function (row) {
+                    if (row.querySelector('.js-service').value) fetchPrice(row);
+                });
+            });
+        }
+
+        recalc();
+    })();
+</script>

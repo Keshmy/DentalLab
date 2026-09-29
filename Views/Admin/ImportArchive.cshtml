@@ -1,0 +1,12 @@
+@{
+    ViewData["Title"] = "استيراد الأرشيف";
+}
+<div class="card p-4 col-md-8">
+    <h4>استيراد أرشيف الحالات من Excel</h4>
+    <p class="text-muted">سيتم استيراد الأسعار وحالات 2025 و 2026. الحالات الموجودة مسبقاً (نفس رقم الحالة والسنة) يتم تخطيها.</p>
+    <form asp-action="ImportArchive" method="post">
+        <input type="hidden" name="confirm" value="true" />
+        <button class="btn btn-primary">بدء الاستيراد</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+    </form>
+</div>

@@ -1,0 +1,130 @@
+@model List<Invoice>
+@{
+    ViewData["Title"] = "الفواتير";
+    var monthNames = new[] { "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر" };
+    int year = (int)ViewBag.Year;
+    int month = (int)ViewBag.Month;
+    var years = ViewBag.AvailableYears as List<int> ?? [];
+    var monthClinics = ViewBag.MonthClinics as List<(Guid? ClinicId, string Name, decimal Total, int Units, bool Invoiced)> ?? [];
+}
+
+<h3 class="fw-bold mb-3">الفواتير — @monthNames[month - 1] @year</h3>
+
+<form method="get" class="row g-2 mb-4">
+    <div class="col-md-3">
+        <select name="year" class="form-select">
+            @foreach (var y in years)
+            {
+                <option value="@y" selected="@(y == year)">@y</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select name="month" class="form-select">
+            @for (int m = 1; m <= 12; m++)
+            {
+                <option value="@m" selected="@(m == month)">@monthNames[m - 1]</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-outline-primary w-100">عرض</button>
+    </div>
+</form>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <strong>أعمال الشهر الجاهزة للتفويتر</strong>
+        <small class="text-muted d-block">الأرقام محسوبة من أسطر الحالات مباشرة</small>
+    </div>
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr><th>المركز</th><th>الوحدات</th><th>الإجمالي</th><th>الحالة</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var c in monthClinics)
+                {
+                    <tr>
+                        <td>@c.Name</td>
+                        <td>@c.Units</td>
+                        <td class="fw-bold">@c.Total.ToString("N2")</td>
+                        <td>
+                            @if (c.Invoiced)
+                            {
+                                <span class="badge bg-success">صدرت</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">لم تصدر</span>
+                            }
+                        </td>
+                        <td>
+                            <a asp-action="Preview" asp-route-clinicId="@c.ClinicId"
+                               asp-route-year="@year" asp-route-month="@month"
+                               class="btn btn-sm btn-outline-primary">معاينة وإصدار</a>
+                        </td>
+                    </tr>
+                }
+                @if (monthClinics.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-muted">لا توجد أعمال في هذا الشهر</td></tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="table-light fw-bold">
+                    <th>الإجمالي</th>
+                    <th>@monthClinics.Sum(c => c.Units)</th>
+                    <th>@monthClinics.Sum(c => c.Total).ToString("N2")</th>
+                    <th colspan="2"></th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><strong>الفواتير الصادرة</strong></div>
+    <div class="table-responsive">
+        <table class="table table-striped mb-0">
+            <thead>
+                <tr>
+                    <th>رقم</th>
+                    <th>المركز</th>
+                    <th>الطبيب</th>
+                    <th>الفترة</th>
+                    <th>الوحدات</th>
+                    <th>الإجمالي</th>
+                    <th>المسدد</th>
+                    <th>المتبقي</th>
+                    <th>الحالة</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var i in Model)
+                {
+                    <tr>
+                        <td>@i.Number</td>
+                        <td>@(i.Clinic?.Name ?? "بدون مركز")</td>
+                        <td>@(i.Doctor?.Name ?? "كل الأطباء")</td>
+                        <td>@i.FromDate.ToString("yyyy/M/d") — @i.ToDate.ToString("yyyy/M/d")</td>
+                        <td>@i.TotalUnits</td>
+                        <td class="fw-bold">@i.TotalAmount.ToString("N2")</td>
+                        <td class="text-success">@i.PaidAmount.ToString("N2")</td>
+                        <td class="@(i.Outstanding > 0 ? "text-danger" : "")">@i.Outstanding.ToString("N2")</td>
+                        <td>@i.Status</td>
+                        <td>
+                            <a asp-action="Details" asp-route-id="@i.Id" class="btn btn-sm btn-outline-secondary">عرض</a>
+                            <a asp-action="Print" asp-route-id="@i.Id" target="_blank" class="btn btn-sm btn-outline-dark">طباعة</a>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="10" class="text-muted">لم تصدر فواتير في هذا الشهر</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

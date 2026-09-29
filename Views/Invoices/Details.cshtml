@@ -1,0 +1,162 @@
+@model Invoice
+@{
+    ViewData["Title"] = $"فاتورة رقم {Model.Number}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        فاتورة رقم @Model.Number — @(Model.Clinic?.Name ?? "بدون مركز")
+        @if (Model.Doctor != null)
+        {
+            <span class="text-muted">— @Model.Doctor.Name</span>
+        }
+    </h4>
+    <div>
+        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" class="btn btn-dark">طباعة</a>
+        <a asp-action="Index" asp-route-year="@Model.Year" asp-route-month="@Model.Month" class="btn btn-outline-secondary">رجوع</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="small text-muted">إجمالي الفاتورة</div>
+            <div class="fs-5 fw-bold">@Model.TotalAmount.ToString("N2")</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="small text-muted">عدد الوحدات</div>
+            <div class="fs-5 fw-bold">@Model.TotalUnits</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="small text-muted">المسدد</div>
+            <div class="fs-5 fw-bold text-success">@Model.PaidAmount.ToString("N2")</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="small text-muted">المتبقي</div>
+            <div class="fs-5 fw-bold @(Model.Outstanding > 0 ? "text-danger" : "text-success")">@Model.Outstanding.ToString("N2")</div>
+        </div></div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <strong>أسطر الفاتورة</strong>
+        <small class="text-muted d-block">
+            مُثبَّتة وقت الإصدار (@Model.IssueDate.ToString("yyyy/M/d")) — لا تتأثر بأي تعديل لاحق على الحالات أو الأسعار
+        </small>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>رقم الحالة</th>
+                    <th>اسم الحالة</th>
+                    <th>الطبيب</th>
+                    <th>المنتج</th>
+                    <th>العدد</th>
+                    <th>السعر</th>
+                    <th>الإجمالي</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var line in Model.Lines.OrderBy(l => l.DoctorName).ThenBy(l => l.CaseNumber))
+                {
+                    <tr class="@(line.IsRemake ? "table-warning" : "")">
+                        <td>@line.CaseNumber</td>
+                        <td>@line.PatientName</td>
+                        <td>@line.DoctorName</td>
+                        <td>@line.ProductName</td>
+                        <td>@line.Quantity</td>
+                        <td>@line.UnitPrice.ToString("N2")</td>
+                        <td>@line.LineTotal.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="table-dark">
+                    <th colspan="4" class="text-end">عدد الوحدات / إجمالي الفاتورة</th>
+                    <th>@Model.TotalUnits</th>
+                    <th></th>
+                    <th>@Model.TotalAmount.ToString("N2")</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header"><strong>التحصيلات</strong></div>
+            <table class="table mb-0">
+                <thead><tr><th>التاريخ</th><th>المبلغ</th><th>الحساب</th><th>الطريقة</th><th>مستلم</th></tr></thead>
+                <tbody>
+                    @foreach (var p in Model.Payments.OrderBy(p => p.Date))
+                    {
+                        <tr>
+                            <td>@p.Date?.ToString("yyyy/M/d")</td>
+                            <td>@p.Amount.ToString("N2")</td>
+                            <td>@p.FinancialAccount?.Name</td>
+                            <td>@p.Method</td>
+                            <td>@(p.IsReceived ? "نعم" : "لا")</td>
+                        </tr>
+                    }
+                    @if (Model.Payments.Count == 0)
+                    {
+                        <tr><td colspan="5" class="text-muted">لا توجد تحصيلات</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header"><strong>تسجيل تحصيل</strong></div>
+            <form asp-action="AddPayment" asp-route-id="@Model.Id" method="post" class="card-body row g-2">
+                <div class="col-6">
+                    <label class="form-label">المبلغ</label>
+                    <input name="amount" type="number" step="0.01" min="0" class="form-control"
+                           value="@Model.Outstanding.ToString("0.00")" />
+                </div>
+                <div class="col-6">
+                    <label class="form-label">التاريخ</label>
+                    <input name="date" type="date" class="form-control" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-6">
+                    <label class="form-label">الحساب</label>
+                    <select name="accountId" class="form-select" asp-items="ViewBag.Accounts">
+                        <option value="">—</option>
+                    </select>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">الطريقة</label>
+                    <select name="method" class="form-select" asp-items="ViewBag.Methods">
+                        <option value="">—</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">ملاحظات</label>
+                    <input name="notes" class="form-control" />
+                </div>
+                <div class="col-12">
+                    <button class="btn btn-primary">تسجيل</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@if (Model.Payments.Count == 0)
+{
+    <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="mt-3"
+          onsubmit="return confirm('إلغاء الفاتورة وفكّ ارتباط حالاتها؟');">
+        <button class="btn btn-outline-danger">إلغاء الفاتورة</button>
+    </form>
+}

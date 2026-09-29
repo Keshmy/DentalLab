@@ -1,0 +1,28 @@
+@model ServiceType
+@{ ViewData["Title"] = "منتج جديد"; }
+<h4 class="mb-3">منتج جديد</h4>
+<form asp-action="Create" method="post" class="col-md-6">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="UnitPrice" class="form-label"></label>
+        <input asp-for="UnitPrice" class="form-control" />
+        <div class="form-text">يُطبَّق على كل طبيب ليس له سعر خاص.</div>
+    </div>
+    <div class="mb-3">
+        <label asp-for="UnitCost" class="form-label"></label>
+        <input asp-for="UnitCost" class="form-control" />
+        <div class="form-text">تكلفة المعمل للوحدة — تُستخدم في حساب الربح وخسارة الإعادات.</div>
+    </div>
+    <div class="form-check mb-3">
+        <input asp-for="IsActive" class="form-check-input" />
+        <label asp-for="IsActive" class="form-check-label"></label>
+    </div>
+    <button class="btn btn-primary">حفظ</button>
+    <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+</form>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

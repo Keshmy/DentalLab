@@ -1,0 +1,28 @@
+@{
+    ViewData["Title"] = "استيراد الإيرادات والمصاريف";
+}
+<h4 class="mb-3">استيراد ملف الإيرادات والمصاريف</h4>
+
+<div class="card col-lg-8">
+    <div class="card-body">
+        <p>
+            سيُقرأ الملف <code>Data/Finance.xlsx</code> (ورقتا 2025 و 2026) وتُنشأ منه سجلات
+            الإيرادات والمصاريف والسلف.
+        </p>
+        <div class="alert alert-warning">
+            <strong>ما سيفعله الاستيراد بالبيانات غير المنتظمة:</strong>
+            <ul class="mb-0">
+                <li>المبالغ المكتوبة بعلامة <code>/</code> أو <code>\</code> تُسجَّل <strong>غير مُحصَّلة / غير مدفوعة</strong> — وهذا مطابق لمجاميع الملف نفسه.</li>
+                <li>سطر «دين على عادل» يُسجَّل <strong>سلفة</strong> لا مصروفاً، لأن السلفة لا تنقص الربح.</li>
+                <li>الأجهزة (لابتوب، UP3D، يو بي إس ...) تُصنَّف <strong>أجهزة ومعدات</strong> فلا تُحمَّل كاملة على ربح شهر واحد.</li>
+                <li>الأسطر التي فيها مبلغ بدون بيان تُتجاهل ويُنبَّه عليها.</li>
+                <li>إعادة الاستيراد آمنة — تُحذف الأسطر المستوردة سابقاً ولا تُكرَّر.</li>
+            </ul>
+        </div>
+        <form asp-action="ImportFinance" method="post">
+            <input type="hidden" name="confirm" value="true" />
+            <button class="btn btn-primary">ابدأ الاستيراد</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,14 @@
+﻿@{
+    ViewBag.Title = "خطأ";
+}
+
+<div class="container text-center pt-5">
+    <h4>@(ViewBag.ErrorTitle ?? "حدث خطأ أثناء معالجة الطلب")</h4>
+    <div class="alert alert-danger mt-3">
+        <h6>@(ViewBag.ErrorMessage ?? "نعمل على إصلاح المشكلة")</h6>
+    </div>
+    @if (ViewBag.ExceptionMessage != null)
+    {
+        <div class="alert alert-danger text-start">@ViewBag.ExceptionMessage</div>
+    }
+</div>

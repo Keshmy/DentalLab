@@ -1,0 +1,26 @@
+@model IEnumerable<Clinic>
+@{ ViewData["Title"] = "العيادات"; }
+<partial name="Partial/_datatables-css" />
+<div class="d-flex justify-content-between mb-3">
+    <h3>العيادات</h3>
+    <a asp-action="Create" class="btn btn-primary">عيادة جديدة</a>
+</div>
+<table id="table1" class="table table-striped table-bordered w-100">
+    <thead><tr><th>الاسم</th><th>العنوان</th><th>الهاتف</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var c in Model)
+    {
+        <tr>
+            <td><a asp-action="Edit" asp-route-id="@c.Id">@c.Name</a></td>
+            <td>@c.Address</td>
+            <td>@c.Phone</td>
+            <td>
+                <form asp-action="Delete" asp-route-id="@c.Id" method="post" class="d-inline" onsubmit="return confirm('حذف؟');">
+                    <button class="btn btn-sm btn-outline-danger">حذف</button>
+                </form>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+@section Scripts { <partial name="Partial/_datatables-js" /> }

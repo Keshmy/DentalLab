@@ -1,0 +1,53 @@
+@model FinancialAccount
+@{
+    ViewData["Title"] = "حساب جديد";
+}
+
+<h4 class="mb-3">إضافة حساب</h4>
+
+<form asp-action="Create" method="post" class="col-md-8">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+    <div class="card mb-3">
+        <div class="card-body row g-3">
+            <div class="col-md-6">
+                <label asp-for="Name" class="form-label"></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Kind" class="form-label"></label>
+                <select asp-for="Kind" class="form-select" asp-items="ViewBag.Kinds"></select>
+                <span asp-validation-for="Kind" class="text-danger"></span>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="OpeningBalance" class="form-label"></label>
+                <input asp-for="OpeningBalance" type="number" step="0.01" class="form-control" />
+                <span asp-validation-for="OpeningBalance" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-3 d-flex align-items-end">
+                <div class="form-check mb-2">
+                    <input asp-for="IsActive" class="form-check-input" />
+                    <label asp-for="IsActive" class="form-check-label"></label>
+                </div>
+            </div>
+            <div class="col-md-9">
+                <label asp-for="Notes" class="form-label"></label>
+                <input asp-for="Notes" class="form-control" />
+            </div>
+        </div>
+        <div class="card-footer small text-muted">
+            الرصيد الافتتاحي هو ما كان في الحساب قبل بدء التسجيل في النظام.
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <button class="btn btn-primary px-5">حفظ</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

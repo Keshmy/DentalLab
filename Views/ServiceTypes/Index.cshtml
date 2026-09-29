@@ -1,0 +1,62 @@
+@model IEnumerable<ServiceType>
+@{ ViewData["Title"] = "المنتجات والأسعار"; }
+<partial name="Partial/_datatables-css" />
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">المنتجات والأسعار</h3>
+    <div>
+        <a asp-controller="DoctorPrices" asp-action="Index" class="btn btn-outline-primary">أسعار الأطباء</a>
+        <a asp-action="Create" class="btn btn-primary">منتج جديد</a>
+    </div>
+</div>
+
+<div class="alert alert-light border">
+    <strong>السعر العام</strong> يُطبَّق على كل طبيب ليس له سعر خاص.
+    <strong>تكلفة الوحدة</strong> هي ما يدفعه المعمل فعلاً (بلوك، تي-بيس ...) وتُستخدم لحساب ربح الوحدة وخسارة الإعادة المجانية.
+</div>
+
+<table id="table1" class="table table-striped table-bordered w-100">
+    <thead>
+        <tr>
+            <th>المنتج</th>
+            <th>السعر العام</th>
+            <th>تكلفة الوحدة</th>
+            <th>ربح الوحدة</th>
+            <th>الهامش</th>
+            <th>نشط</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var s in Model)
+        {
+            <tr>
+                <td><a asp-action="Edit" asp-route-id="@s.Id">@s.Name</a></td>
+                <td>@s.UnitPrice.ToString("N2")</td>
+                <td>@s.UnitCost.ToString("N2")</td>
+                <td class="@(s.UnitMargin >= 0 ? "text-success" : "text-danger")">@s.UnitMargin.ToString("N2")</td>
+                <td>
+                    @if (s.UnitPrice > 0)
+                    {
+                        @($"{Math.Round(s.UnitMargin * 100 / s.UnitPrice, 1)}%")
+                    }
+                </td>
+                <td>
+                    @if (s.IsActive)
+                    {
+                        <span class="badge bg-success">نشط</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">موقوف</span>
+                    }
+                </td>
+                <td>
+                    <form asp-action="Delete" asp-route-id="@s.Id" method="post" class="d-inline" onsubmit="return confirm('حذف؟');">
+                        <button class="btn btn-sm btn-outline-danger">حذف</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+@section Scripts { <partial name="Partial/_datatables-js" /> }

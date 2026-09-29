@@ -1,0 +1,19 @@
+@model LabCaseFormVM
+@{
+    ViewData["Title"] = "تعديل الحالة";
+}
+
+<h4 class="mb-3">تعديل الحالة @Model.CaseNumber — @Model.PatientName</h4>
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+    <partial name="_CaseForm" model="Model" />
+    <div class="mb-4">
+        <button class="btn btn-primary px-5">حفظ</button>
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">عرض</a>
+        <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <partial name="_CaseFormScripts" />
+}

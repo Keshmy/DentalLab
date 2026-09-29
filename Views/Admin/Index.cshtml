@@ -1,0 +1,193 @@
+@model DashboardVM
+@{
+    ViewData["Title"] = "لوحة التحكم";
+    var monthNames = new[] { "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر" };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold mb-0">لوحة التحكم — @monthNames[Model.Month - 1] @Model.Year</h3>
+    <div>
+        <a asp-controller="Finance" asp-action="Index" class="btn btn-outline-primary">الأرباح والخسائر</a>
+        <a asp-controller="LabCases" asp-action="Create" class="btn btn-primary">حالة جديدة</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-2">
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow-sm h-100 border-start border-4 border-primary">
+            <div class="card-body">
+                <p class="text-muted mb-1">إيراد الشهر (مفوتر)</p>
+                <h4 class="mb-0">@Model.MonthRevenue.ToString("N2")</h4>
+                <small class="text-muted">@Model.MonthUnits وحدة / @Model.CasesThisMonth حالة</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow-sm h-100 border-start border-4 border-success">
+            <div class="card-body">
+                <p class="text-muted mb-1">المحصَّل هذا الشهر</p>
+                <h4 class="mb-0 text-success">@Model.MonthCollections.ToString("N2")</h4>
+                <small class="text-muted">ما دخل الصندوق فعلاً</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow-sm h-100 border-start border-4 border-danger">
+            <div class="card-body">
+                <p class="text-muted mb-1">مصروفات الشهر</p>
+                <h4 class="mb-0 text-danger">@Model.MonthExpenses.ToString("N2")</h4>
+                <small class="text-muted">تشغيلية (بدون الأجهزة)</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow-sm h-100 border-start border-4 @(Model.MonthNetProfit >= 0 ? "border-info" : "border-warning")">
+            <div class="card-body">
+                <p class="text-muted mb-1">صافي ربح الشهر</p>
+                <h4 class="mb-0 @(Model.MonthNetProfit >= 0 ? "text-info" : "text-warning")">
+                    @Model.MonthNetProfit.ToString("N2")
+                </h4>
+                <small class="text-muted">إيراد − مصروفات − نسبة الشريك</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <p class="text-muted mb-1">ديون العيادات</p>
+                <h5 class="mb-0">@Model.TotalReceivables.ToString("N2")</h5>
+                <small class="text-muted">مفوتر ولم يُحصَّل</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <p class="text-muted mb-1">رصيد الصندوق</p>
+                <h5 class="mb-0">@Model.CashBalance.ToString("N2")</h5>
+                <small class="text-muted">مجموع كل الحسابات</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <p class="text-muted mb-1">سلف لم تُسدَّد</p>
+                <h5 class="mb-0">@Model.TotalLoanBalance.ToString("N2")</h5>
+                <small class="text-muted">ليست مصروفاً — ذمة على الأشخاص</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <p class="text-muted mb-1">إعادات الشهر</p>
+                <h5 class="mb-0">@Model.MonthRemakeUnits وحدة</h5>
+                <small class="text-danger">خسارة مواد @Model.MonthFreeRemakeCost.ToString("N2")</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header"><strong>ديون العيادات</strong></div>
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead><tr><th>المركز</th><th>الأعمال</th><th>المحصَّل</th><th>المتبقي</th></tr></thead>
+                    <tbody>
+                        @foreach (var r in Model.TopReceivables)
+                        {
+                            <tr>
+                                <td>@r.ClinicName</td>
+                                <td>@r.Invoiced.ToString("N2")</td>
+                                <td>@r.Collected.ToString("N2")</td>
+                                <td class="fw-bold @(r.Balance > 0 ? "text-danger" : "text-success")">@r.Balance.ToString("N2")</td>
+                            </tr>
+                        }
+                        @if (Model.TopReceivables.Count == 0)
+                        {
+                            <tr><td colspan="4" class="text-muted">لا توجد ذمم</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header"><strong>الحسابات</strong></div>
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead><tr><th>الحساب</th><th>النوع</th><th>داخل</th><th>خارج</th><th>الرصيد</th></tr></thead>
+                    <tbody>
+                        @foreach (var a in Model.Accounts)
+                        {
+                            <tr>
+                                <td>@a.Name</td>
+                                <td>@a.Kind</td>
+                                <td class="text-success">@a.In.ToString("N2")</td>
+                                <td class="text-danger">@a.Out.ToString("N2")</td>
+                                <td class="fw-bold">@a.Balance.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card"><div class="card-header">الحالات حسب الشهر</div><div class="card-body"><canvas id="monthChart"></canvas></div></div>
+    </div>
+    <div class="col-md-6">
+        <div class="card"><div class="card-header">الحالات حسب المركز</div><div class="card-body"><canvas id="clinicChart"></canvas></div></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><strong>آخر الحالات</strong></div>
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead><tr><th>رقم</th><th>الاسم</th><th>الطبيب</th><th>المنتجات</th><th>الوحدات</th><th>الإجمالي</th><th>التاريخ</th></tr></thead>
+            <tbody>
+                @foreach (var c in Model.RecentCases)
+                {
+                    <tr>
+                        <td>@c.CaseNumber</td>
+                        <td><a asp-controller="LabCases" asp-action="Details" asp-route-id="@c.Id">@c.PatientName</a></td>
+                        <td>@c.Doctor?.Name</td>
+                        <td>@string.Join(" + ", c.Items.Select(i => i.DisplayName))</td>
+                        <td>@c.Units</td>
+                        <td>@c.Total.ToString("N2")</td>
+                        <td>@c.ReceivedDate?.ToString("yyyy/M/d")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+    <script>
+        $.get('@Url.Action("CasesMonthChart", "Admin")', function (data) {
+            new Chart(document.getElementById('monthChart'), {
+                type: 'bar',
+                data: { labels: Object.keys(data), datasets: [{ label: 'حالات', data: Object.values(data), backgroundColor: '#64a19d' }] }
+            });
+        });
+        $.get('@Url.Action("CasesClinicChart", "Admin")', function (data) {
+            new Chart(document.getElementById('clinicChart'), {
+                type: 'doughnut',
+                data: { labels: Object.keys(data), datasets: [{ data: Object.values(data) }] }
+            });
+        });
+    </script>
+}

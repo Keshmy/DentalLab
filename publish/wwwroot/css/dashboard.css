@@ -1,0 +1,28 @@
+﻿body {
+    background-color: #EFF0F5;
+}
+
+.container, .container-fluid, .container-xxl, .container-xl, .container-lg, .container-md, .container-sm {
+    padding-left: 0;
+}
+
+
+.canvas {
+    width: 250px;
+    height: 250px;
+}
+
+.canvas1 {
+    /*width: 250px;*/
+    height: 250px;
+}
+
+.table th img, .table td img {
+   
+     border-radius: 0; 
+}
+
+.btn {
+    padding: 1rem 1.6rem;
+    font-size:12px;
+}

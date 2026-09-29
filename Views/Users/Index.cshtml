@@ -1,0 +1,29 @@
+@model IEnumerable<ApplicationUser>
+@{ ViewData["Title"] = "المستخدمون"; }
+<partial name="Partial/_datatables-css" />
+<div class="d-flex justify-content-between mb-3">
+    <h3>المستخدمون</h3>
+    <a asp-action="CreateUser" class="btn btn-primary">مستخدم جديد</a>
+</div>
+<div class="row g-3 mb-3">
+    <div class="col-md-3"><a asp-action="Index" class="card p-3 text-decoration-none">الكل: @ViewBag.AllUsers</a></div>
+    <div class="col-md-3"><a asp-action="Index" asp-route-userList="Confirmed" class="card p-3 text-decoration-none">مؤكد: @ViewBag.Confirmed</a></div>
+    <div class="col-md-3"><a asp-action="Index" asp-route-userList="Unconfirmed" class="card p-3 text-decoration-none">غير مؤكد: @ViewBag.Unconfirmed</a></div>
+    <div class="col-md-3"><a asp-action="Index" asp-route-userList="Locked" class="card p-3 text-decoration-none">موقوف: @ViewBag.Locked</a></div>
+</div>
+<table id="table1" class="table table-striped table-bordered w-100">
+    <thead><tr><th>البريد</th><th>الاسم الظاهر</th><th>العمر</th><th>آخر دخول</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var u in Model)
+    {
+        <tr>
+            <td><a asp-action="EditUser" asp-route-id="@u.Id">@u.Email</a></td>
+            <td>@u.UserProfile?.DisplayName</td>
+            <td>@u.Age</td>
+            <td>@u.LastAccessTimeLocal?.ToString("g")</td>
+            <td>@(u.LockoutEnd > DateTimeOffset.UtcNow ? "موقوف" : "")</td>
+        </tr>
+    }
+    </tbody>
+</table>
+@section Scripts { <partial name="Partial/_datatables-js" /> }

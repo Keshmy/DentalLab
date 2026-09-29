@@ -1,0 +1,130 @@
+@using DentalLab.ViewModels.Finance
+@model IEnumerable<LoanTransaction>
+@{
+    ViewData["Title"] = "السلف";
+    var rows = Model ?? Enumerable.Empty<LoanTransaction>();
+    var balances = ViewBag.Balances as List<LoanBalanceVM> ?? new List<LoanBalanceVM>();
+    var totalBalance = balances.Sum(b => b.Balance);
+}
+<partial name="Partial/_datatables-css" />
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">السلف</h3>
+    <a asp-action="Create" class="btn btn-primary">حركة سلفة جديدة</a>
+</div>
+
+<div class="alert alert-info mb-2">
+    السلفة ليست مصروفًا: تنقص الصندوق وتُسجَّل ذمة على الشخص، ولا تنقص الربح إلا إذا شُطبت (دين معدوم).
+</div>
+<div class="alert alert-secondary">
+    وكذلك <strong>الدين الذي علينا</strong>: قبضه يزيد الصندوق وسداده ينقصه، لكنه لا يُحسب إيرادًا ولا مصروفًا في الأرباح.
+</div>
+
+<div class="row g-2 mb-3">
+    <div class="col-md-4">
+        <div class="card border-primary"><div class="card-body py-2">
+            <div class="small text-muted">صافي الذمم</div>
+            <div class="fs-5 fw-bold @(totalBalance < 0 ? "text-danger" : "text-primary")">@totalBalance.ToString("N2")</div>
+            <small class="text-muted">موجب = لنا على الأشخاص، سالب = علينا لهم</small>
+        </div></div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header"><strong>أرصدة السلف حسب الشخص</strong></div>
+    <div class="table-responsive">
+        <table class="table table-bordered mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>الشخص</th>
+                    <th>سلف ممنوحة</th>
+                    <th>المسدد</th>
+                    <th>مشطوب</th>
+                    <th>دين علينا</th>
+                    <th>سددناه له</th>
+                    <th>المتبقي</th>
+                    <th>الجهة</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var b in balances)
+                {
+                    <tr>
+                        <td>@b.PersonName</td>
+                        <td>@b.Given.ToString("N2")</td>
+                        <td>@b.Repaid.ToString("N2")</td>
+                        <td>@b.WrittenOff.ToString("N2")</td>
+                        <td>@b.Borrowed.ToString("N2")</td>
+                        <td>@b.Settled.ToString("N2")</td>
+                        <td class="fw-bold @(b.Balance < 0 ? "text-danger" : "")">@b.Balance.ToString("N2")</td>
+                        <td><span class="badge bg-light text-dark">@b.Side</span></td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="table-light fw-bold">
+                    <th colspan="6" class="text-end">الإجمالي</th>
+                    <th>@totalBalance.ToString("N2")</th>
+                    <th></th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<h5 class="fw-bold mb-2">كل الحركات</h5>
+<table id="table1" class="table table-striped table-bordered table-hover w-100">
+    <thead>
+        <tr>
+            <th>التاريخ</th>
+            <th>الشخص</th>
+            <th>الحركة</th>
+            <th>المبلغ</th>
+            <th>الحساب</th>
+            <th>البيان</th>
+            <th>مشطوب؟</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var l in rows)
+        {
+            <tr class="@(l.IsWrittenOff ? "table-danger" : "")">
+                <td>@(l.Date?.ToString("yyyy/M/d") ?? $"{l.Year}/{l.Month}")</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@l.Id">@l.PersonName</a>
+                    @if (l.Employee != null)
+                    {
+                        <span class="badge bg-light text-dark">موظف</span>
+                    }
+                </td>
+                <td>
+                    @{
+                        // الأحمر = كاش خارج من الصندوق، الأخضر = كاش داخل
+                        var dirClass = LoanDirection.IsCashIn(l.Direction) ? "bg-success" : "bg-danger";
+                    }
+                    <span class="badge @dirClass">@l.Direction</span>
+                </td>
+                <td data-order="@l.Amount">@l.Amount.ToString("N2")</td>
+                <td>@l.FinancialAccount?.Name</td>
+                <td>@l.Description</td>
+                <td>
+                    @if (l.IsWrittenOff)
+                    {
+                        <span class="badge bg-dark">مشطوب</span>
+                    }
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@l.Id" class="btn btn-sm btn-outline-secondary">تعديل</a>
+                    <form asp-action="Delete" asp-route-id="@l.Id" method="post" class="d-inline" onsubmit="return confirm('حذف؟');">
+                        <button class="btn btn-sm btn-outline-danger">حذف</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@section Scripts {
+    <partial name="Partial/_datatables-js" />
+}
