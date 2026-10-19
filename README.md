@@ -28,6 +28,13 @@ ASP.NET Core MVC dental laboratory management system with Arabic RTL UI. Track l
 - [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
 - SQL Server (LocalDB, Express, or full)
 
+## Developer / AI onboarding
+
+For full setup, architecture, domain rules, branches, and coding conventions (humans or any AI):
+
+→ **[`DEVELOPER.md`](DEVELOPER.md)**  
+→ AI agents: also see **[`AGENTS.md`](AGENTS.md)**
+
 ## Getting started
 
 1. Clone the repository:
