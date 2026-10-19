@@ -20,11 +20,14 @@
                 <tr><th>المركز / العيادة</th><td>@Model.Clinic?.Name</td></tr>
                 <tr><th>تاريخ الاستلام</th><td>@Model.ReceivedDate?.ToString("yyyy/M/d")</td></tr>
                 <tr><th>تاريخ التسليم</th><td>@(Model.DeliveryDate?.ToString("yyyy/M/d") ?? "لم يُسلَّم")</td></tr>
-                <tr><th>مكان الأسنان</th><td>@Model.ToothPosition</td></tr>
                 <tr><th>الشهر / السنة</th><td>@Model.Month / @Model.Year</td></tr>
-                <tr><th>رقم المستند</th><td>@Model.DocumentNumber</td></tr>
-                <tr><th>إيصال قبض</th><td>@Model.ReceiptNumber</td></tr>
-                <tr><th>الحالة</th><td>@Model.Status</td></tr>
+                <tr>
+                    <th>الحالة</th>
+                    <td>
+                        @Model.Status
+                        <div class="small text-muted">@CaseStatus.Describe(Model.Status)</div>
+                    </td>
+                </tr>
                 <tr>
                     <th>الفاتورة</th>
                     <td>
@@ -53,6 +56,7 @@
                     <thead>
                         <tr>
                             <th>المنتج</th>
+                            <th>مكان الأسنان</th>
                             <th>العدد</th>
                             <th>السعر</th>
                             <th>الإجمالي</th>
@@ -78,6 +82,7 @@
                                         }
                                     }
                                 </td>
+                                <td>@(item.ToothPosition ?? "—")</td>
                                 <td>@item.Quantity</td>
                                 <td>@item.UnitPrice.ToString("N2")</td>
                                 <td>@item.LineTotal.ToString("N2")</td>
@@ -87,14 +92,14 @@
                     </tbody>
                     <tfoot>
                         <tr class="table-light fw-bold">
-                            <th>الإجمالي</th>
+                            <th colspan="2">الإجمالي</th>
                             <th>@Model.Units</th>
                             <th></th>
                             <th>@Model.Total.ToString("N2")</th>
                             <th>@Model.Items.Sum(i => i.Quantity * i.UnitCost).ToString("N2")</th>
                         </tr>
                         <tr>
-                            <th colspan="3" class="text-end">الربح الإجمالي للحالة</th>
+                            <th colspan="4" class="text-end">الربح الإجمالي للحالة</th>
                             <th colspan="2">
                                 @((Model.Total - Model.Items.Sum(i => i.Quantity * i.UnitCost)).ToString("N2"))
                             </th>

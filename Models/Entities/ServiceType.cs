@@ -35,5 +35,7 @@ namespace DentalLab.Models.Entities
         public ICollection<LabCaseItem> CaseItems { get; set; } = new List<LabCaseItem>();
 
         public ICollection<DoctorPrice> DoctorPrices { get; set; } = new List<DoctorPrice>();
+
+        public ICollection<ClinicPrice> ClinicPrices { get; set; } = new List<ClinicPrice>();
     }
 }

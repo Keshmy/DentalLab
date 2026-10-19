@@ -1,10 +1,13 @@
 @model LabCaseFormVM
 @{
     var services = ViewBag.ServiceList as List<ServiceType> ?? [];
+    var statusHelp = ViewBag.StatusHelp as Dictionary<string, string> ?? new Dictionary<string, string>();
 }
 
-<div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+<div asp-validation-summary="All" class="text-danger mb-2"></div>
 <input type="hidden" asp-for="Id" />
+<input type="hidden" asp-for="Year" />
+<input type="hidden" asp-for="Month" />
 
 @if (Model.IsInvoiced)
 {
@@ -28,50 +31,33 @@
         <div class="col-md-3">
             <label asp-for="DoctorId" class="form-label"></label>
             <select asp-for="DoctorId" id="DoctorId" class="form-select" asp-items="ViewBag.Doctors">
-                <option value="">—</option>
+                <option value="">— اختر الطبيب —</option>
             </select>
+            <span asp-validation-for="DoctorId" class="text-danger"></span>
         </div>
         <div class="col-md-3">
             <label asp-for="ClinicId" class="form-label"></label>
-            <select asp-for="ClinicId" class="form-select" asp-items="ViewBag.Clinics">
-                <option value="">—</option>
+            <select asp-for="ClinicId" id="ClinicId" class="form-select" asp-items="ViewBag.Clinics">
+                <option value="">— اختر العيادة —</option>
             </select>
+            <span asp-validation-for="ClinicId" class="text-danger"></span>
         </div>
 
         <div class="col-md-3">
             <label asp-for="ReceivedDate" class="form-label"></label>
             <input asp-for="ReceivedDate" class="form-control" />
+            <div class="form-text">الشهر والسنة يُستنتجان من تاريخ الاستلام تلقائياً.</div>
         </div>
         <div class="col-md-3">
             <label asp-for="DeliveryDate" class="form-label"></label>
             <input asp-for="DeliveryDate" class="form-control" />
         </div>
         <div class="col-md-3">
-            <label asp-for="ToothPosition" class="form-label"></label>
-            <input asp-for="ToothPosition" class="form-control" placeholder="6 5 4 | 1 2 3" />
+            <label asp-for="Status" class="form-label"></label>
+            <select asp-for="Status" id="CaseStatus" class="form-select" asp-items="ViewBag.Statuses"></select>
+            <div class="form-text" id="statusHelp">@(statusHelp.GetValueOrDefault(Model.Status ?? CaseStatus.Normal))</div>
         </div>
         <div class="col-md-3">
-            <label asp-for="Status" class="form-label"></label>
-            <select asp-for="Status" class="form-select" asp-items="ViewBag.Statuses"></select>
-        </div>
-
-        <div class="col-md-2">
-            <label asp-for="Year" class="form-label"></label>
-            <input asp-for="Year" class="form-control" />
-        </div>
-        <div class="col-md-2">
-            <label asp-for="Month" class="form-label"></label>
-            <input asp-for="Month" class="form-control" />
-        </div>
-        <div class="col-md-2">
-            <label asp-for="DocumentNumber" class="form-label"></label>
-            <input asp-for="DocumentNumber" class="form-control" />
-        </div>
-        <div class="col-md-2">
-            <label asp-for="ReceiptNumber" class="form-label"></label>
-            <input asp-for="ReceiptNumber" class="form-control" />
-        </div>
-        <div class="col-md-4">
             <label asp-for="Notes" class="form-label"></label>
             <input asp-for="Notes" class="form-control" />
         </div>
@@ -90,13 +76,15 @@
         <table class="table table-bordered mb-0 align-middle" id="itemsTable">
             <thead>
                 <tr>
-                    <th style="min-width:210px">المنتج</th>
-                    <th style="min-width:150px">وصف بديل</th>
-                    <th style="width:90px">العدد</th>
-                    <th style="width:110px">السعر</th>
-                    <th style="width:110px">التكلفة</th>
-                    <th style="width:190px">إعادة / السبب</th>
-                    <th style="width:110px">الإجمالي</th>
+                    <th style="min-width:190px">المنتج</th>
+                    <th style="min-width:120px">وصف بديل</th>
+                    <th style="width:110px">علوي / سفلي</th>
+                    <th style="width:110px">أرقام الأسنان</th>
+                    <th style="width:80px">العدد</th>
+                    <th style="width:100px">السعر</th>
+                    <th style="width:100px">التكلفة</th>
+                    <th style="width:170px">إعادة / السبب</th>
+                    <th style="width:100px">الإجمالي</th>
                     <th style="width:50px"></th>
                 </tr>
             </thead>
@@ -111,36 +99,74 @@
                                 <option value="">— اختر المنتج —</option>
                                 @foreach (var s in services)
                                 {
-                                    <option value="@s.Id" selected="@(item.ServiceTypeId == s.Id)">@s.Name</option>
+                                    if (item.ServiceTypeId == s.Id)
+                                    {
+                                        <option value="@s.Id" selected>@s.Name</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@s.Id">@s.Name</option>
+                                    }
                                 }
                             </select>
                         </td>
                         <td><input name="Items[@i].ProductName" value="@item.ProductName" class="form-control" placeholder="اختياري" /></td>
-                        <td><input name="Items[@i].Quantity" value="@item.Quantity" type="number" min="1" class="form-control js-qty" /></td>
+                        <td>
+                            <select name="Items[@i].ToothArch" class="form-select js-arch">
+                                <option value="">—</option>
+                                @foreach (var a in ToothArch.All)
+                                {
+                                    if (item.ToothArch == a)
+                                    {
+                                        <option value="@a" selected>@a</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@a">@a</option>
+                                    }
+                                }
+                            </select>
+                        </td>
+                        <td><input name="Items[@i].ToothNumbers" value="@item.ToothNumbers" class="form-control" placeholder="14 15 16" /></td>
+                        <td><input name="Items[@i].Quantity" value="@(item.Quantity < 1 ? 1 : item.Quantity)" type="number" min="1" class="form-control js-qty" /></td>
                         <td><input name="Items[@i].UnitPrice" value="@item.UnitPrice" type="number" step="0.01" min="0" class="form-control js-price" /></td>
                         <td><input name="Items[@i].UnitCost" value="@item.UnitCost" type="number" step="0.01" min="0" class="form-control js-cost" /></td>
                         <td>
                             <div class="form-check mb-1">
-                                <input type="checkbox" name="Items[@i].IsRemake" value="true" class="form-check-input js-remake" checked="@item.IsRemake" id="remake_@i" />
+                                @if (item.IsRemake)
+                                {
+                                    <input type="checkbox" name="Items[@i].IsRemake" value="true" class="form-check-input js-remake" checked id="remake_@i" />
+                                }
+                                else
+                                {
+                                    <input type="checkbox" name="Items[@i].IsRemake" value="true" class="form-check-input js-remake" id="remake_@i" />
+                                }
                                 <input type="hidden" name="Items[@i].IsRemake" value="false" />
                                 <label class="form-check-label" for="remake_@i">إعادة</label>
                             </div>
-                            <select name="Items[@i].RemakeReason" class="form-select form-select-sm js-reason" disabled="@(!item.IsRemake)">
+                            <select name="Items[@i].RemakeReason" class="form-select form-select-sm js-reason" @(item.IsRemake ? null : "disabled")>
                                 <option value="">— السبب —</option>
                                 @foreach (var r in RemakeReason.All)
                                 {
-                                    <option value="@r" selected="@(item.RemakeReason == r)">@r</option>
+                                    if (item.RemakeReason == r)
+                                    {
+                                        <option value="@r" selected>@r</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@r">@r</option>
+                                    }
                                 }
                             </select>
                         </td>
                         <td class="text-end"><span class="js-total">@item.LineTotal.ToString("N2")</span></td>
-                        <td><button type="button" class="btn btn-sm btn-outline-danger js-remove">×</button></td>
+                        <td><button type="button" class="btn btn-sm btn-outline-danger js-remove" title="حذف السطر">×</button></td>
                     </tr>
                 }
             </tbody>
             <tfoot>
                 <tr class="table-light">
-                    <th colspan="2" class="text-end">الإجمالي</th>
+                    <th colspan="4" class="text-end">الإجمالي</th>
                     <th><span id="sumQty">0</span></th>
                     <th colspan="3"></th>
                     <th class="text-end"><span id="sumTotal">0.00</span></th>
@@ -150,7 +176,9 @@
         </table>
     </div>
     <div class="card-footer small text-muted">
-        السعر يُجلب تلقائياً: السعر الخاص بالطبيب إن وُجد، وإلا السعر العام. ويمكنك تعديله لهذا السطر فقط.
+        السعر يُجلب تلقائياً: سعر الطبيب إن وُجد، وإلا سعر العيادة، وإلا السعر العام. ويمكنك تعديله لهذا السطر فقط.
+        <br />
+        مكان الأسنان يُدخل في كل سطر (علوي / سفلي + أرقام اختيارية).
         <br />
         الإعادة: الأولى على المعمل بسعر صفر، والثانية وما بعدها على الطبيب — ويمكن تغيير السعر يدوياً.
     </div>
@@ -169,6 +197,16 @@
             </select>
         </td>
         <td><input name="Items[__i__].ProductName" class="form-control" placeholder="اختياري" /></td>
+        <td>
+            <select name="Items[__i__].ToothArch" class="form-select js-arch">
+                <option value="">—</option>
+                @foreach (var a in ToothArch.All)
+                {
+                    <option value="@a">@a</option>
+                }
+            </select>
+        </td>
+        <td><input name="Items[__i__].ToothNumbers" class="form-control" placeholder="14 15 16" /></td>
         <td><input name="Items[__i__].Quantity" value="1" type="number" min="1" class="form-control js-qty" /></td>
         <td><input name="Items[__i__].UnitPrice" value="0" type="number" step="0.01" min="0" class="form-control js-price" /></td>
         <td><input name="Items[__i__].UnitCost" value="0" type="number" step="0.01" min="0" class="form-control js-cost" /></td>
@@ -187,6 +225,10 @@
             </select>
         </td>
         <td class="text-end"><span class="js-total">0.00</span></td>
-        <td><button type="button" class="btn btn-sm btn-outline-danger js-remove">×</button></td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger js-remove" title="حذف السطر">×</button></td>
     </tr>
 </template>
+
+<script type="application/json" id="statusHelpJson">
+@Html.Raw(System.Text.Json.JsonSerializer.Serialize(statusHelp))
+</script>

@@ -106,5 +106,16 @@ namespace DentalLab.Models.Entities
         [
             Normal, Paid, Free, Cancelled, Remake
         ];
+
+        /// <summary>شرح مختصر يظهر في نموذج الحالة.</summary>
+        public static string Describe(string status) => status switch
+        {
+            Normal => "عادي — حالة قياسية تُحسب بسعرها وتدخل الفاتورة.",
+            Paid => "مدفوع — تم تحصيل المبلغ (أو دُفع مقدماً) ويُسجَّل للمتابعة.",
+            Free => "مجاني — بدون مقابل (سعر الصفوف يُصفَّر عند الحفظ).",
+            Cancelled => "ملغي — لا تُفوتر ولا تدخل الإيرادات.",
+            Remake => "إعادة — حالة إعادة عمل؛ ضع علامة «إعادة» على السطر وحدد السبب.",
+            _ => status
+        };
     }
 }

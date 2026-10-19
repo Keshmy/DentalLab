@@ -16,16 +16,19 @@ namespace DentalLab.Controllers
         private readonly AppDbContext _context;
         private readonly FinanceService _finance;
         private readonly ExcelImportService _importService;
+        private readonly BackupService _backup;
 
         public AdminController(
             AppDbContext context,
             FinanceService finance,
             ExcelImportService importService,
+            BackupService backup,
             IWebHostEnvironment host) : base(host)
         {
             _context = context;
             _finance = finance;
             _importService = importService;
+            _backup = backup;
         }
 
         [HttpGet]
@@ -118,6 +121,77 @@ namespace DentalLab.Controllers
             await _context.SaveChangesAsync();
             TempData["SuccessMessage"] = "تم حفظ بيانات المختبر";
             return RedirectToAction(nameof(SiteDetails));
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Prog,Admin")]
+        public async Task<IActionResult> Backup()
+        {
+            var settings = await _backup.GetOrCreateSettingsAsync();
+            var ensure = _backup.EnsureFolder(settings.FolderPath);
+            var vm = new BackupPageVM
+            {
+                FolderPath = settings.FolderPath,
+                AutoEnabled = settings.AutoEnabled,
+                AutoHour = settings.AutoHour,
+                AutoMinute = settings.AutoMinute,
+                LastBackupAt = settings.LastBackupAt,
+                LastBackupMessage = settings.LastBackupMessage,
+                LastAutoBackupDate = settings.LastAutoBackupDate,
+                SuggestedFolders = _backup.GetSuggestedFolders(),
+                ExistingBackups = _backup.ListBackups(settings.FolderPath),
+                FolderReady = ensure.Ok,
+                FolderError = ensure.Error
+            };
+            return View(vm);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Prog,Admin")]
+        public async Task<IActionResult> BackupSettings(BackupPageVM model)
+        {
+            if (!ModelState.IsValid)
+            {
+                model.SuggestedFolders = _backup.GetSuggestedFolders();
+                model.ExistingBackups = _backup.ListBackups(model.FolderPath);
+                return View("Backup", model);
+            }
+
+            await _backup.SaveSettingsAsync(model.FolderPath, model.AutoEnabled, model.AutoHour, model.AutoMinute);
+            TempData["SuccessMessage"] = "تم حفظ إعدادات النسخ الاحتياطي";
+            return RedirectToAction(nameof(Backup));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Prog,Admin")]
+        public async Task<IActionResult> RunBackup()
+        {
+            var result = await _backup.CreateBackupAsync(isAuto: false);
+            TempData[result.Ok ? "SuccessMessage" : "ErrorMessage"] = result.Message;
+            return RedirectToAction(nameof(Backup));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Prog,Admin")]
+        public async Task<IActionResult> RestoreBackup(string path)
+        {
+            var result = await _backup.RestoreAsync(path);
+            TempData[result.Ok ? "SuccessMessage" : "ErrorMessage"] = result.Message;
+            return RedirectToAction(nameof(Backup));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Prog,Admin")]
+        [RequestSizeLimit(512_000_000)]
+        public async Task<IActionResult> RestoreUpload(IFormFile backupFile)
+        {
+            var result = await _backup.RestoreFromUploadAsync(backupFile);
+            TempData[result.Ok ? "SuccessMessage" : "ErrorMessage"] = result.Message;
+            return RedirectToAction(nameof(Backup));
         }
 
         [HttpGet]

@@ -5,7 +5,17 @@
         var body = document.getElementById('itemsBody');
         var template = document.getElementById('rowTemplate');
         var doctorSelect = document.getElementById('DoctorId');
+        var clinicSelect = document.getElementById('ClinicId');
+        var statusSelect = document.getElementById('CaseStatus');
+        var statusHelpEl = document.getElementById('statusHelp');
+        var caseIdInput = document.querySelector('input[name="Id"]');
         if (!body || !template) return;
+
+        var statusHelp = {};
+        try {
+            var helpNode = document.getElementById('statusHelpJson');
+            if (helpNode) statusHelp = JSON.parse(helpNode.textContent || '{}');
+        } catch (e) { }
 
         // فهرس تصاعدي مستقل عن ترتيب الصفوف — الحذف لا يكسر الربط
         var nextIndex = body.querySelectorAll('.item-row').length;
@@ -14,10 +24,26 @@
             return (isFinite(n) ? n : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
+        function remakeSequenceFor(row) {
+            var n = 0;
+            var rows = body.querySelectorAll('.item-row');
+            for (var i = 0; i < rows.length; i++) {
+                if (!rows[i].querySelector('.js-remake').checked) continue;
+                n++;
+                if (rows[i] === row) return n;
+            }
+            return Math.max(n, 1);
+        }
+
         function recalc() {
             var totalQty = 0, totalSum = 0;
             body.querySelectorAll('.item-row').forEach(function (row) {
-                var qty = parseFloat(row.querySelector('.js-qty').value) || 0;
+                var qtyInput = row.querySelector('.js-qty');
+                var qty = parseFloat(qtyInput.value);
+                if (!isFinite(qty) || qty < 1) {
+                    qty = 1;
+                    if (document.activeElement !== qtyInput) qtyInput.value = 1;
+                }
                 var price = parseFloat(row.querySelector('.js-price').value) || 0;
                 var line = qty * price;
                 row.querySelector('.js-total').textContent = money(line);
@@ -29,15 +55,16 @@
         }
 
         function addRow(isRemake) {
-            var html = template.innerHTML.replace(/__i__/g, nextIndex);
+            var html = template.innerHTML.replace(/__i__/g, String(nextIndex));
             nextIndex++;
 
             var wrapper = document.createElement('tbody');
             wrapper.innerHTML = html.trim();
             var row = wrapper.querySelector('.item-row');
+            if (!row) return null;
             body.appendChild(row);
 
-            if (isRemake) {
+            if (isRemake || (statusSelect && statusSelect.value === 'إعادة')) {
                 var check = row.querySelector('.js-remake');
                 check.checked = true;
                 applyRemake(row);
@@ -50,20 +77,71 @@
             var isRemake = row.querySelector('.js-remake').checked;
             var reason = row.querySelector('.js-reason');
             reason.disabled = !isRemake;
-            if (isRemake) {
-                // الافتراضي: الإعادة على المعمل (صفر) — والمستخدم يعدّلها إن حاسب الطبيب
-                row.querySelector('.js-price').value = 0;
+            if (!isRemake) {
+                reason.value = '';
+                recalc();
+                return;
             }
-            recalc();
+            fetchRemakePrice(row);
+        }
+
+        function fetchRemakePrice(row) {
+            var serviceId = row.querySelector('.js-service').value;
+            if (!serviceId) {
+                row.querySelector('.js-price').value = 0;
+                recalc();
+                return;
+            }
+
+            var url = '@Url.Action("RemakePrice", "LabCases")'
+                + '?serviceTypeId=' + encodeURIComponent(serviceId)
+                + '&reason=' + encodeURIComponent(row.querySelector('.js-reason').value || '');
+
+            var caseId = caseIdInput && caseIdInput.value && caseIdInput.value !== '00000000-0000-0000-0000-000000000000'
+                ? caseIdInput.value : '';
+            if (caseId) url += '&caseId=' + encodeURIComponent(caseId);
+            if (doctorSelect && doctorSelect.value) url += '&doctorId=' + encodeURIComponent(doctorSelect.value);
+            if (clinicSelect && clinicSelect.value) url += '&clinicId=' + encodeURIComponent(clinicSelect.value);
+
+            // عدد الإعادات في النموذج الحالي (قبل الاعتماد على قاعدة البيانات فقط)
+            var localSeq = remakeSequenceFor(row);
+            url += '&localSequence=' + encodeURIComponent(String(localSeq));
+
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (data) {
+                    if (!data) {
+                        row.querySelector('.js-price').value = localSeq >= 2 ? row.querySelector('.js-price').value : 0;
+                        recalc();
+                        return;
+                    }
+                    row.querySelector('.js-price').value = data.price;
+                    if (data.explanation) {
+                        row.setAttribute('title', data.explanation);
+                    }
+                    recalc();
+                })
+                .catch(function () {
+                    row.querySelector('.js-price').value = 0;
+                    recalc();
+                });
         }
 
         function fetchPrice(row) {
             var serviceId = row.querySelector('.js-service').value;
             if (!serviceId) return;
 
+            if (row.querySelector('.js-remake').checked) {
+                fetchRemakePrice(row);
+                // still fetch cost
+            }
+
             var url = '@Url.Action("ServicePrice", "LabCases")' + '?id=' + encodeURIComponent(serviceId);
             if (doctorSelect && doctorSelect.value) {
                 url += '&doctorId=' + encodeURIComponent(doctorSelect.value);
+            }
+            if (clinicSelect && clinicSelect.value) {
+                url += '&clinicId=' + encodeURIComponent(clinicSelect.value);
             }
 
             fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
@@ -79,24 +157,60 @@
                 .catch(function () { });
         }
 
+        function refreshAllPrices() {
+            body.querySelectorAll('.item-row').forEach(function (row) {
+                if (row.querySelector('.js-service').value) fetchPrice(row);
+            });
+        }
+
+        function updateStatusHelp() {
+            if (!statusSelect || !statusHelpEl) return;
+            statusHelpEl.textContent = statusHelp[statusSelect.value] || '';
+            if (statusSelect.value === 'إعادة') {
+                body.querySelectorAll('.item-row').forEach(function (row) {
+                    if (!row.querySelector('.js-service').value) return;
+                    var check = row.querySelector('.js-remake');
+                    if (!check.checked) {
+                        check.checked = true;
+                        applyRemake(row);
+                    } else {
+                        fetchRemakePrice(row);
+                    }
+                });
+            }
+        }
+
         document.getElementById('addRow').addEventListener('click', function () { addRow(false); });
         document.getElementById('addRemake').addEventListener('click', function () { addRow(true); });
 
         body.addEventListener('click', function (e) {
-            if (e.target.classList.contains('js-remove')) {
-                var rows = body.querySelectorAll('.item-row');
-                if (rows.length === 1) {
-                    // لا نترك الجدول فارغاً — نفرّغ السطر بدلاً من حذفه
-                    var row = rows[0];
-                    row.querySelector('.js-service').value = '';
-                    row.querySelector('.js-price').value = 0;
-                    row.querySelector('.js-cost').value = 0;
-                    row.querySelector('.js-qty').value = 1;
-                } else {
-                    e.target.closest('.item-row').remove();
-                }
-                recalc();
+            var btn = e.target.closest('.js-remove');
+            if (!btn) return;
+            var rows = body.querySelectorAll('.item-row');
+            var row = btn.closest('.item-row');
+            if (rows.length === 1) {
+                row.querySelector('.js-service').value = '';
+                row.querySelector('.js-price').value = 0;
+                row.querySelector('.js-cost').value = 0;
+                row.querySelector('.js-qty').value = 1;
+                var arch = row.querySelector('.js-arch');
+                if (arch) arch.value = '';
+                var numbers = row.querySelector('input[name*="ToothNumbers"]');
+                if (numbers) numbers.value = '';
+                var product = row.querySelector('input[name*="ProductName"]');
+                if (product) product.value = '';
+                var remake = row.querySelector('.js-remake');
+                remake.checked = false;
+                applyRemake(row);
+            } else {
+                row.remove();
             }
+            // أعد تسعير الإعادات المتبقية بعد الحذف
+            body.querySelectorAll('.item-row').forEach(function (r) {
+                if (r.querySelector('.js-remake').checked && r.querySelector('.js-service').value)
+                    fetchRemakePrice(r);
+            });
+            recalc();
         });
 
         body.addEventListener('change', function (e) {
@@ -104,20 +218,27 @@
             if (!row) return;
             if (e.target.classList.contains('js-service')) fetchPrice(row);
             if (e.target.classList.contains('js-remake')) applyRemake(row);
+            if (e.target.classList.contains('js-reason') && row.querySelector('.js-remake').checked)
+                fetchRemakePrice(row);
         });
+
+        // Disabled remake-reason selects don't post — enable them right before submit.
+        var form = body.closest('form');
+        if (form) {
+            form.addEventListener('submit', function () {
+                body.querySelectorAll('.js-reason').forEach(function (el) { el.disabled = false; });
+            });
+        }
 
         body.addEventListener('input', function (e) {
             if (e.target.classList.contains('js-qty') || e.target.classList.contains('js-price')) recalc();
         });
 
-        if (doctorSelect) {
-            doctorSelect.addEventListener('change', function () {
-                body.querySelectorAll('.item-row').forEach(function (row) {
-                    if (row.querySelector('.js-service').value) fetchPrice(row);
-                });
-            });
-        }
+        if (doctorSelect) doctorSelect.addEventListener('change', refreshAllPrices);
+        if (clinicSelect) clinicSelect.addEventListener('change', refreshAllPrices);
+        if (statusSelect) statusSelect.addEventListener('change', updateStatusHelp);
 
+        updateStatusHelp();
         recalc();
     })();
 </script>

@@ -1,4 +1,5 @@
 using DentalLab.Classes;
+using DentalLab.Models;
 using DentalLab.Models.Entities;
 using DentalLab.Models.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -12,10 +13,12 @@ namespace DentalLab.Controllers
     public class ClinicsController : BaseController
     {
         private readonly IUnitOfWork<Clinic> _clinics;
+        private readonly AppDbContext _context;
 
-        public ClinicsController(IUnitOfWork<Clinic> clinics, IWebHostEnvironment host) : base(host)
+        public ClinicsController(IUnitOfWork<Clinic> clinics, AppDbContext context, IWebHostEnvironment host) : base(host)
         {
             _clinics = clinics;
+            _context = context;
         }
 
         public async Task<IActionResult> Index()
@@ -65,6 +68,22 @@ namespace DentalLab.Controllers
             var item = await _clinics.Repository.GetByIdAsync(id);
             if (item == null)
                 return View("NotFound");
+
+            var caseCount = await _context.LabCases.CountAsync(c => c.ClinicId == id);
+            if (caseCount > 0)
+            {
+                TempData["ErrorMessage"] = $"لا يمكن حذف العيادة «{item.Name}» لأن لديها {caseCount} حالة مرتبطة.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Also block if invoices/payments exist for this clinic
+            var invoiceCount = await _context.Invoices.CountAsync(i => i.ClinicId == id);
+            if (invoiceCount > 0)
+            {
+                TempData["ErrorMessage"] = $"لا يمكن حذف العيادة «{item.Name}» لأن لديها {invoiceCount} فاتورة مرتبطة.";
+                return RedirectToAction(nameof(Index));
+            }
+
             _clinics.Repository.Delete(item);
             await _clinics.SaveAsync();
             TempData["SuccessMessage"] = "تم حذف العيادة";

@@ -16,6 +16,8 @@ builder.Services.AddScoped<ExcelImportService>();
 builder.Services.AddScoped<PricingService>();
 builder.Services.AddScoped<FinanceService>();
 builder.Services.AddScoped<InvoiceService>();
+builder.Services.AddScoped<BackupService>();
+builder.Services.AddHostedService<AutoBackupHostedService>();
 
 builder.Services.AddDbContext<AppDbContext>(x =>
     x.UseSqlServer(builder.Configuration.GetConnectionString("DbCon")));
@@ -79,6 +81,11 @@ using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Database.Migrate();
+
+        // Ensure default backup folder on first run (C:\DentalLabBackups).
+        var backup = scope.ServiceProvider.GetRequiredService<BackupService>();
+        var settings = await backup.GetOrCreateSettingsAsync();
+        backup.EnsureFolder(settings.FolderPath);
 
         // Never auto-import Excel unless explicitly enabled (Somee free DB is only ~30 MB).
         var autoImport = app.Configuration.GetValue("AutoImportExcel", false);

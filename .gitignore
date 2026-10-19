@@ -1,0 +1,23 @@
+## Build
+bin/
+obj/
+publish/
+out/
+
+## Publish packages
+*.zip
+DentalLab_Somee_Publish/
+
+## User uploads / local data
+wwwroot/upload/
+publish/wwwroot/upload/
+logs/
+*.user
+*.suo
+.vs/
+.idea/
+
+## OS
+Thumbs.db
+Desktop.ini
+.DS_Store

@@ -133,13 +133,29 @@ namespace DentalLab.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddPayment(Guid id, decimal amount, DateTime? date, Guid? accountId, string? method, string? notes)
         {
-            var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.Id == id);
+            var invoice = await _context.Invoices
+                .Include(i => i.Payments)
+                .FirstOrDefaultAsync(i => i.Id == id);
+
             if (invoice == null)
                 return View("NotFound");
+
+            if (invoice.Outstanding <= 0)
+            {
+                TempData["ErrorMessage"] = "الفاتورة مسددة بالكامل — لا يمكن تسجيل تحصيل إضافي.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
 
             if (amount <= 0)
             {
                 TempData["ErrorMessage"] = "أدخل مبلغاً أكبر من صفر.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            if (amount > invoice.Outstanding)
+            {
+                TempData["ErrorMessage"] =
+                    $"المبلغ أكبر من المتبقي ({invoice.Outstanding:N2}). لا يمكن تحصيل أكثر من المستحق.";
                 return RedirectToAction(nameof(Details), new { id });
             }
 

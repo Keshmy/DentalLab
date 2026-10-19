@@ -1,0 +1,57 @@
+@model List<DentalLab.ViewModels.Finance.ClinicPriceSummaryVM>
+@{
+    ViewData["Title"] = "أسعار العيادات";
+}
+<partial name="Partial/_datatables-css" />
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">أسعار العيادات / المراكز</h3>
+    <a asp-controller="ServiceTypes" asp-action="Index" class="btn btn-outline-primary">الأسعار العامة</a>
+</div>
+
+<div class="alert alert-light border">
+    السعر المطبَّق = <strong>سعر الطبيب</strong> إن وُجد، وإلا <strong>سعر العيادة</strong>، وإلا <strong>السعر العام</strong>.
+</div>
+
+<table id="table1" class="table table-striped table-bordered w-100">
+    <thead>
+        <tr>
+            <th>العيادة</th>
+            <th>أسعار خاصة</th>
+            <th>الحالات</th>
+            <th>إجمالي الأعمال</th>
+            <th>تكلفة المواد</th>
+            <th>الربح الإجمالي</th>
+            <th>الهامش</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var c in Model)
+        {
+            <tr>
+                <td>@c.ClinicName</td>
+                <td>
+                    @if (c.OverrideCount > 0)
+                    {
+                        <span class="badge bg-primary">@c.OverrideCount</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">السعر العام</span>
+                    }
+                </td>
+                <td>@c.CaseCount</td>
+                <td>@c.Revenue.ToString("N2")</td>
+                <td>@c.MaterialCost.ToString("N2")</td>
+                <td class="@(c.GrossMargin >= 0 ? "text-success" : "text-danger")">@c.GrossMargin.ToString("N2")</td>
+                <td>@c.MarginPercent%</td>
+                <td>
+                    <a asp-action="Manage" asp-route-id="@c.ClinicId" class="btn btn-sm btn-outline-primary">الأسعار</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@section Scripts { <partial name="Partial/_datatables-js" /> }

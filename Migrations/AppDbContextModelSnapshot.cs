@@ -123,6 +123,58 @@ namespace DentalLab.Migrations
                         });
                 });
 
+            modelBuilder.Entity("DentalLab.Models.Entities.BackupSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("AutoEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("AutoHour")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AutoMinute")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FolderPath")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<string>("LastAutoBackupDate")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<DateTime?>("LastBackupAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LastBackupMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("Modified")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BackupSettings");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("b1000000-0000-0000-0000-000000000001"),
+                            AutoEnabled = true,
+                            AutoHour = 2,
+                            AutoMinute = 0,
+                            Created = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FolderPath = "C:\\DentalLabBackups"
+                        });
+                });
+
             modelBuilder.Entity("DentalLab.Models.Entities.Clinic", b =>
                 {
                     b.Property<Guid>("Id")
@@ -155,6 +207,42 @@ namespace DentalLab.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Clinics");
+                });
+
+            modelBuilder.Entity("DentalLab.Models.Entities.ClinicPrice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWID()");
+
+                    b.Property<Guid>("ClinicId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("Modified")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("ServiceTypeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServiceTypeId");
+
+                    b.HasIndex("ClinicId", "ServiceTypeId")
+                        .IsUnique();
+
+                    b.ToTable("ClinicPrices");
                 });
 
             modelBuilder.Entity("DentalLab.Models.Entities.Doctor", b =>
@@ -695,7 +783,6 @@ namespace DentalLab.Migrations
             modelBuilder.Entity("DentalLab.Models.Entities.LabCase", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
                         .HasDefaultValueSql("NEWID()");
 
@@ -771,7 +858,6 @@ namespace DentalLab.Migrations
             modelBuilder.Entity("DentalLab.Models.Entities.LabCaseItem", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
                         .HasDefaultValueSql("NEWID()");
 
@@ -1197,6 +1283,25 @@ namespace DentalLab.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("DentalLab.Models.Entities.ClinicPrice", b =>
+                {
+                    b.HasOne("DentalLab.Models.Entities.Clinic", "Clinic")
+                        .WithMany("ClinicPrices")
+                        .HasForeignKey("ClinicId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DentalLab.Models.Entities.ServiceType", "ServiceType")
+                        .WithMany("ClinicPrices")
+                        .HasForeignKey("ServiceTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Clinic");
+
+                    b.Navigation("ServiceType");
+                });
+
             modelBuilder.Entity("DentalLab.Models.Entities.DoctorPrice", b =>
                 {
                     b.HasOne("DentalLab.Models.Entities.Doctor", "Doctor")
@@ -1424,6 +1529,8 @@ namespace DentalLab.Migrations
 
             modelBuilder.Entity("DentalLab.Models.Entities.Clinic", b =>
                 {
+                    b.Navigation("ClinicPrices");
+
                     b.Navigation("Invoices");
 
                     b.Navigation("LabCases");
@@ -1458,6 +1565,8 @@ namespace DentalLab.Migrations
             modelBuilder.Entity("DentalLab.Models.Entities.ServiceType", b =>
                 {
                     b.Navigation("CaseItems");
+
+                    b.Navigation("ClinicPrices");
 
                     b.Navigation("DoctorPrices");
                 });

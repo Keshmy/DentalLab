@@ -17,6 +17,15 @@
     </div>
 </div>
 
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
+
 <div class="row g-3 mb-3">
     <div class="col-md-3">
         <div class="card"><div class="card-body py-2">
@@ -119,36 +128,55 @@
     <div class="col-lg-5">
         <div class="card h-100">
             <div class="card-header"><strong>تسجيل تحصيل</strong></div>
-            <form asp-action="AddPayment" asp-route-id="@Model.Id" method="post" class="card-body row g-2">
-                <div class="col-6">
-                    <label class="form-label">المبلغ</label>
-                    <input name="amount" type="number" step="0.01" min="0" class="form-control"
-                           value="@Model.Outstanding.ToString("0.00")" />
+            @if (Model.Outstanding <= 0)
+            {
+                <div class="card-body">
+                    <div class="alert alert-success mb-0">
+                        @if (Model.Outstanding < 0)
+                        {
+                            <span>الفاتورة مسددة بالكامل مع زيادة تحصيل @Math.Abs(Model.Outstanding).ToString("N2"). لا يمكن تسجيل تحصيل إضافي.</span>
+                        }
+                        else
+                        {
+                            <span>الفاتورة مسددة بالكامل. لا يمكن تسجيل تحصيل إضافي.</span>
+                        }
+                    </div>
                 </div>
-                <div class="col-6">
-                    <label class="form-label">التاريخ</label>
-                    <input name="date" type="date" class="form-control" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
-                </div>
-                <div class="col-6">
-                    <label class="form-label">الحساب</label>
-                    <select name="accountId" class="form-select" asp-items="ViewBag.Accounts">
-                        <option value="">—</option>
-                    </select>
-                </div>
-                <div class="col-6">
-                    <label class="form-label">الطريقة</label>
-                    <select name="method" class="form-select" asp-items="ViewBag.Methods">
-                        <option value="">—</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label class="form-label">ملاحظات</label>
-                    <input name="notes" class="form-control" />
-                </div>
-                <div class="col-12">
-                    <button class="btn btn-primary">تسجيل</button>
-                </div>
-            </form>
+            }
+            else
+            {
+                <form asp-action="AddPayment" asp-route-id="@Model.Id" method="post" class="card-body row g-2">
+                    <div class="col-6">
+                        <label class="form-label">المبلغ</label>
+                        <input name="amount" type="number" step="0.01" min="0.01" max="@Model.Outstanding.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                               class="form-control" value="@Model.Outstanding.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" required />
+                        <div class="form-text">المتبقي: @Model.Outstanding.ToString("N2")</div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">التاريخ</label>
+                        <input name="date" type="date" class="form-control" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">الحساب</label>
+                        <select name="accountId" class="form-select" asp-items="ViewBag.Accounts">
+                            <option value="">—</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">الطريقة</label>
+                        <select name="method" class="form-select" asp-items="ViewBag.Methods">
+                            <option value="">—</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">ملاحظات</label>
+                        <input name="notes" class="form-control" />
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-primary">تسجيل</button>
+                    </div>
+                </form>
+            }
         </div>
     </div>
 </div>

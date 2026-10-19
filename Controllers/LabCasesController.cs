@@ -86,6 +86,8 @@ namespace DentalLab.Controllers
         public async Task<IActionResult> Create(LabCaseFormVM model)
         {
             ApplyDates(model);
+            NormalizeItems(model);
+            ClearObsoleteModelState(model);
             var lines = model.Items.Where(i => !i.IsEmpty).ToList();
 
             if (lines.Count == 0)
@@ -108,9 +110,9 @@ namespace DentalLab.Controllers
                 ClinicId = model.ClinicId,
                 ReceivedDate = model.ReceivedDate,
                 DeliveryDate = model.DeliveryDate,
-                ToothPosition = model.ToothPosition,
-                DocumentNumber = model.DocumentNumber,
-                ReceiptNumber = model.ReceiptNumber,
+                ToothPosition = SummarizeTeeth(lines),
+                DocumentNumber = null,
+                ReceiptNumber = null,
                 Notes = model.Notes,
                 Year = model.Year,
                 Month = model.Month,
@@ -152,51 +154,92 @@ namespace DentalLab.Controllers
             if (id != model.Id)
                 return View("NotFound");
 
-            var labCase = await _context.LabCases
-                .Include(c => c.Items)
-                .FirstOrDefaultAsync(c => c.Id == id);
-
-            if (labCase == null)
-                return View("NotFound");
-
             ApplyDates(model);
+            NormalizeItems(model);
+            ClearObsoleteModelState(model);
             var lines = model.Items.Where(i => !i.IsEmpty).ToList();
 
             if (lines.Count == 0)
                 ModelState.AddModelError(string.Empty, "أضف سطراً واحداً على الأقل (المنتج والعدد والسعر).");
 
+            var existing = await _context.LabCases
+                .AsNoTracking()
+                .Where(c => c.Id == id)
+                .Select(c => new
+                {
+                    c.Id,
+                    c.InvoiceId,
+                    InvoiceNumber = c.Invoice == null ? (int?)null : c.Invoice.Number
+                })
+                .FirstOrDefaultAsync();
+
+            if (existing == null)
+                return View("NotFound");
+
             if (!ModelState.IsValid)
             {
                 await FillLookups();
-                model.IsInvoiced = labCase.InvoiceId.HasValue;
+                model.IsInvoiced = existing.InvoiceId.HasValue;
+                model.InvoiceNumber = existing.InvoiceNumber;
                 if (model.Items.Count == 0)
                     model.Items.Add(new LabCaseItemFormVM());
                 return View(model);
             }
 
-            labCase.CaseNumber = model.CaseNumber;
-            labCase.PatientName = model.PatientName;
-            labCase.DoctorId = model.DoctorId;
-            labCase.ClinicId = model.ClinicId;
-            labCase.ReceivedDate = model.ReceivedDate;
-            labCase.DeliveryDate = model.DeliveryDate;
-            labCase.ToothPosition = model.ToothPosition;
-            labCase.DocumentNumber = model.DocumentNumber;
-            labCase.ReceiptNumber = model.ReceiptNumber;
-            labCase.Notes = model.Notes;
-            labCase.Year = model.Year;
-            labCase.Month = model.Month;
-            labCase.Status = model.Status;
-            labCase.Modified = DateTime.UtcNow;
+            var tooth = SummarizeTeeth(lines);
+            var modified = DateTime.UtcNow;
 
-            _context.LabCaseItems.RemoveRange(labCase.Items);
-            labCase.Items.Clear();
-            await BuildItems(labCase, lines);
+            await using var tx = await _context.Database.BeginTransactionAsync();
+
+            var updated = await _context.LabCases
+                .Where(c => c.Id == id)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(c => c.CaseNumber, model.CaseNumber)
+                    .SetProperty(c => c.PatientName, model.PatientName)
+                    .SetProperty(c => c.DoctorId, model.DoctorId)
+                    .SetProperty(c => c.ClinicId, model.ClinicId)
+                    .SetProperty(c => c.ReceivedDate, model.ReceivedDate)
+                    .SetProperty(c => c.DeliveryDate, model.DeliveryDate)
+                    .SetProperty(c => c.ToothPosition, tooth)
+                    .SetProperty(c => c.DocumentNumber, (string?)null)
+                    .SetProperty(c => c.ReceiptNumber, (string?)null)
+                    .SetProperty(c => c.Notes, model.Notes)
+                    .SetProperty(c => c.Year, model.Year)
+                    .SetProperty(c => c.Month, model.Month)
+                    .SetProperty(c => c.Status, model.Status)
+                    .SetProperty(c => c.Modified, modified));
+
+            if (updated == 0)
+            {
+                await tx.RollbackAsync();
+                return View("NotFound");
+            }
+
+            await _context.LabCaseItems
+                .Where(i => i.LabCaseId == id)
+                .ExecuteDeleteAsync();
+
+            // Drop any leftover tracked graph so SaveChanges only INSERTs new lines.
+            _context.ChangeTracker.Clear();
+
+            var shell = new LabCase
+            {
+                Id = id,
+                DoctorId = model.DoctorId,
+                ClinicId = model.ClinicId,
+                Status = model.Status
+            };
+            await BuildItems(shell, lines);
+
+            foreach (var item in shell.Items)
+                _context.LabCaseItems.Add(item);
 
             await _context.SaveChangesAsync();
+            await tx.CommitAsync();
 
-            TempData["SuccessMessage"] = $"تم حفظ الحالة — الإجمالي {labCase.Total:N2}";
-            return RedirectToAction(nameof(Details), new { id = labCase.Id });
+            var total = shell.Items.Sum(i => i.LineTotal);
+            TempData["SuccessMessage"] = $"تم حفظ الحالة — الإجمالي {total:N2}";
+            return RedirectToAction(nameof(Details), new { id });
         }
 
         [HttpGet]
@@ -227,7 +270,7 @@ namespace DentalLab.Controllers
             if (labCase.InvoiceId.HasValue)
             {
                 TempData["ErrorMessage"] = "لا يمكن حذف حالة مُفوترة. ألغِ الفاتورة أولاً.";
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Details), new { id });
             }
 
             _context.LabCases.Remove(labCase);
@@ -236,10 +279,10 @@ namespace DentalLab.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        /// <summary>سعر نوع العمل لهذا الطبيب (الخاص إن وُجد، وإلا العام) + التكلفة.</summary>
-        public async Task<JsonResult> ServicePrice(Guid id, Guid? doctorId)
+        /// <summary>سعر نوع العمل لهذا الطبيب/العيادة + التكلفة.</summary>
+        public async Task<JsonResult> ServicePrice(Guid id, Guid? doctorId, Guid? clinicId)
         {
-            var result = await _pricing.ResolveAsync(id, doctorId);
+            var result = await _pricing.ResolveAsync(id, doctorId, clinicId);
             var cost = await _context.ServiceTypes
                 .Where(s => s.Id == id)
                 .Select(s => s.UnitCost)
@@ -250,15 +293,35 @@ namespace DentalLab.Controllers
                 price = result.Price,
                 generalPrice = result.GeneralPrice,
                 isDoctorPrice = result.IsDoctorPrice,
+                isClinicPrice = result.IsClinicPrice,
                 cost,
                 name = result.ServiceName
             });
         }
 
-        /// <summary>سعر الإعادة المقترح لهذه الحالة (الأولى على المعمل، والتالية على الطبيب).</summary>
-        public async Task<JsonResult> RemakePrice(Guid? caseId, Guid serviceTypeId, Guid? doctorId, string? reason)
+        public async Task<JsonResult> RemakePrice(Guid? caseId, Guid serviceTypeId, Guid? doctorId, Guid? clinicId, string? reason, int? localSequence)
         {
-            var result = await _pricing.ResolveRemakeAsync(caseId ?? Guid.Empty, serviceTypeId, doctorId, reason);
+            // عند إنشاء حالة جديدة أو تعديل كل الأسطر، نفضّل تسلسل النموذج الحالي على عدد DB القديم
+            if (localSequence is > 0)
+            {
+                var price = await _pricing.ResolveAsync(serviceTypeId, doctorId, clinicId);
+                var isLabFault = reason == RemakeReason.LabFault;
+                var chargeable = localSequence >= 2 && !isLabFault;
+                return Json(new
+                {
+                    price = chargeable ? price.Price : 0m,
+                    fullPrice = price.Price,
+                    chargeable,
+                    sequence = localSequence.Value,
+                    explanation = isLabFault
+                        ? "خطأ المعمل — مجاناً"
+                        : localSequence == 1
+                            ? "الإعادة الأولى على المعمل — مجاناً"
+                            : $"الإعادة رقم {localSequence} — على الطبيب"
+                });
+            }
+
+            var result = await _pricing.ResolveRemakeAsync(caseId ?? Guid.Empty, serviceTypeId, doctorId, reason, clinicId);
             return Json(new
             {
                 price = result.Price,
@@ -269,7 +332,6 @@ namespace DentalLab.Controllers
             });
         }
 
-        /// <summary>ينسخ الأسطر إلى الحالة مع تثبيت السعر والتكلفة وترقيم الإعادات.</summary>
         private async Task BuildItems(LabCase labCase, List<LabCaseItemFormVM> lines)
         {
             var serviceIds = lines.Where(l => l.ServiceTypeId.HasValue)
@@ -289,27 +351,54 @@ namespace DentalLab.Controllers
                     .ToDictionaryAsync(p => p.ServiceTypeId, p => p.Price)
                 : [];
 
+            var clinicPrices = labCase.ClinicId.HasValue
+                ? await _context.ClinicPrices
+                    .AsNoTracking()
+                    .Where(p => p.ClinicId == labCase.ClinicId.Value && serviceIds.Contains(p.ServiceTypeId))
+                    .ToDictionaryAsync(p => p.ServiceTypeId, p => p.Price)
+                : [];
+
             var remakeSequence = 0;
+            var isFree = labCase.Status == CaseStatus.Free;
 
             foreach (var line in lines)
             {
                 var service = services.FirstOrDefault(s => s.Id == line.ServiceTypeId);
+                var treatAsRemake = line.IsRemake || labCase.Status == CaseStatus.Remake;
 
-                // السعر المُدخل هو المرجع؛ وإن تُرك صفراً لغير الإعادة نأخذ السعر المطبَّق
-                var price = line.UnitPrice;
-                if (price == 0 && !line.IsRemake && service != null)
+                decimal ResolveCatalogPrice()
                 {
-                    price = doctorPrices.TryGetValue(service.Id, out var special)
-                        ? special
-                        : service.UnitPrice;
+                    if (service == null) return 0m;
+                    if (doctorPrices.TryGetValue(service.Id, out var doctorSpecial))
+                        return doctorSpecial;
+                    if (clinicPrices.TryGetValue(service.Id, out var clinicSpecial))
+                        return clinicSpecial;
+                    return service.UnitPrice;
+                }
+
+                var price = line.UnitPrice;
+                if (isFree)
+                {
+                    price = 0;
+                }
+                else if (treatAsRemake)
+                {
+                    remakeSequence++;
+                    var isLabFault = line.RemakeReason == RemakeReason.LabFault;
+                    var chargeable = remakeSequence >= 2 && !isLabFault;
+                    if (!chargeable)
+                        price = 0;
+                    else if (price == 0)
+                        price = ResolveCatalogPrice();
+                }
+                else if (price == 0 && service != null)
+                {
+                    price = ResolveCatalogPrice();
                 }
 
                 var cost = line.UnitCost > 0
                     ? line.UnitCost
                     : service?.UnitCost ?? 0m;
-
-                if (line.IsRemake)
-                    remakeSequence++;
 
                 labCase.Items.Add(new LabCaseItem
                 {
@@ -317,13 +406,13 @@ namespace DentalLab.Controllers
                     LabCaseId = labCase.Id,
                     ServiceTypeId = line.ServiceTypeId,
                     ProductName = string.IsNullOrWhiteSpace(line.ProductName) ? service?.Name : line.ProductName,
-                    Quantity = line.Quantity,
+                    Quantity = Math.Max(1, line.Quantity),
                     UnitPrice = price,
                     UnitCost = cost,
-                    IsRemake = line.IsRemake,
-                    RemakeReason = line.IsRemake ? line.RemakeReason : null,
-                    RemakeSequence = line.IsRemake ? remakeSequence : 0,
-                    ToothPosition = line.ToothPosition,
+                    IsRemake = treatAsRemake,
+                    RemakeReason = treatAsRemake ? line.RemakeReason : null,
+                    RemakeSequence = treatAsRemake ? remakeSequence : 0,
+                    ToothPosition = FormatTooth(line.ToothArch, line.ToothNumbers),
                     Notes = line.Notes,
                     Created = DateTime.UtcNow
                 });
@@ -339,9 +428,6 @@ namespace DentalLab.Controllers
             ClinicId = labCase.ClinicId,
             ReceivedDate = labCase.ReceivedDate,
             DeliveryDate = labCase.DeliveryDate,
-            ToothPosition = labCase.ToothPosition,
-            DocumentNumber = labCase.DocumentNumber,
-            ReceiptNumber = labCase.ReceiptNumber,
             Notes = labCase.Notes,
             Year = labCase.Year,
             Month = labCase.Month,
@@ -351,28 +437,110 @@ namespace DentalLab.Controllers
             Items = labCase.Items
                 .OrderBy(i => i.IsRemake)
                 .ThenBy(i => i.Created)
-                .Select(i => new LabCaseItemFormVM
+                .Select(i =>
                 {
-                    Id = i.Id,
-                    ServiceTypeId = i.ServiceTypeId,
-                    ProductName = i.ProductName,
-                    Quantity = i.Quantity,
-                    UnitPrice = i.UnitPrice,
-                    UnitCost = i.UnitCost,
-                    IsRemake = i.IsRemake,
-                    RemakeReason = i.RemakeReason,
-                    ToothPosition = i.ToothPosition,
-                    Notes = i.Notes
+                    var (arch, numbers) = ParseTooth(i.ToothPosition);
+                    return new LabCaseItemFormVM
+                    {
+                        Id = i.Id,
+                        ServiceTypeId = i.ServiceTypeId,
+                        ProductName = i.ProductName,
+                        Quantity = i.Quantity,
+                        UnitPrice = i.UnitPrice,
+                        UnitCost = i.UnitCost,
+                        IsRemake = i.IsRemake,
+                        RemakeReason = i.RemakeReason,
+                        ToothArch = arch,
+                        ToothNumbers = numbers,
+                        ToothPosition = i.ToothPosition,
+                        Notes = i.Notes
+                    };
                 }).ToList()
         };
+
+        /// <summary>يصلح قيم العدد الفارغة قبل التحقق حتى لا يفشل التعديل بعد الحفظ.</summary>
+        private static void NormalizeItems(LabCaseFormVM model)
+        {
+            foreach (var item in model.Items)
+            {
+                if (item.Quantity < 1 && !item.IsEmpty)
+                    item.Quantity = 1;
+
+                if (model.Status == CaseStatus.Remake && !item.IsEmpty)
+                    item.IsRemake = true;
+            }
+        }
+
+        private void ClearObsoleteModelState(LabCaseFormVM model)
+        {
+            foreach (var key in new[]
+                     {
+                         nameof(LabCaseFormVM.Year),
+                         nameof(LabCaseFormVM.Month),
+                         nameof(LabCaseFormVM.DocumentNumber),
+                         nameof(LabCaseFormVM.ReceiptNumber),
+                         nameof(LabCaseFormVM.ToothPosition)
+                     })
+            {
+                ModelState.Remove(key);
+            }
+
+            for (var i = 0; i < model.Items.Count; i++)
+            {
+                if (!model.Items[i].IsEmpty)
+                    continue;
+
+                foreach (var field in new[] { "Quantity", "UnitPrice", "UnitCost", "ServiceTypeId", "ProductName" })
+                    ModelState.Remove($"Items[{i}].{field}");
+            }
+        }
 
         private static void ApplyDates(LabCaseFormVM model)
         {
             var d = model.ReceivedDate ?? DateTime.Now;
-            if (model.Year == 0)
-                model.Year = d.Year;
-            if (model.Month == 0)
-                model.Month = d.Month;
+            model.ReceivedDate ??= d.Date;
+            model.Year = d.Year;
+            model.Month = d.Month;
+        }
+
+        private static string? FormatTooth(string? arch, string? numbers)
+        {
+            arch = string.IsNullOrWhiteSpace(arch) ? null : arch.Trim();
+            numbers = string.IsNullOrWhiteSpace(numbers) ? null : numbers.Trim();
+            if (arch == null && numbers == null)
+                return null;
+            if (arch != null && numbers != null)
+                return $"{arch}: {numbers}";
+            return arch ?? numbers;
+        }
+
+        private static (string? Arch, string? Numbers) ParseTooth(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return (null, null);
+
+            foreach (var arch in ToothArch.All)
+            {
+                if (value.Equals(arch, StringComparison.Ordinal))
+                    return (arch, null);
+                var prefix = arch + ":";
+                if (value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    return (arch, value[prefix.Length..].Trim());
+                if (value.StartsWith(arch, StringComparison.Ordinal))
+                    return (arch, value[arch.Length..].Trim().TrimStart(':', '—', '-', ' '));
+            }
+
+            return (null, value.Trim());
+        }
+
+        private static string? SummarizeTeeth(List<LabCaseItemFormVM> lines)
+        {
+            var parts = lines
+                .Select(l => FormatTooth(l.ToothArch, l.ToothNumbers))
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct()
+                .ToList();
+            return parts.Count == 0 ? null : string.Join(" | ", parts);
         }
 
         private async Task FillLookups(int? year = null, int? month = null, Guid? doctorId = null, Guid? clinicId = null, string? status = null)
@@ -383,7 +551,9 @@ namespace DentalLab.Controllers
             ViewBag.Services = new SelectList(services, "Id", "Name");
             ViewBag.ServiceList = services;
             ViewBag.Statuses = new SelectList(CaseStatus.All, status);
+            ViewBag.StatusHelp = CaseStatus.All.ToDictionary(s => s, CaseStatus.Describe);
             ViewBag.RemakeReasons = new SelectList(RemakeReason.All);
+            ViewBag.ToothArches = new SelectList(ToothArch.All);
             ViewBag.Year = year;
             ViewBag.Month = month;
             ViewBag.DoctorId = doctorId;

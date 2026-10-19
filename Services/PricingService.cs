@@ -6,7 +6,7 @@ namespace DentalLab.Services
 {
     /// <summary>
     /// تسعير الأسطر:
-    ///   price(doctor, service) = السعر الخاص بالطبيب إن وُجد، وإلا السعر العام.
+    ///   السعر = سعر الطبيب إن وُجد، وإلا سعر العيادة، وإلا السعر العام.
     /// والإعادة: الأولى على المعمل (مجاناً)، والثانية وما بعدها على الطبيب.
     /// </summary>
     public class PricingService
@@ -18,8 +18,8 @@ namespace DentalLab.Services
             _context = context;
         }
 
-        /// <summary>السعر المطبَّق فعلاً لطبيب معيّن على نوع عمل معيّن.</summary>
-        public async Task<PriceResult> ResolveAsync(Guid serviceTypeId, Guid? doctorId)
+        /// <summary>السعر المطبَّق: طبيب ← عيادة ← عام.</summary>
+        public async Task<PriceResult> ResolveAsync(Guid serviceTypeId, Guid? doctorId, Guid? clinicId = null)
         {
             var service = await _context.ServiceTypes
                 .AsNoTracking()
@@ -30,21 +30,36 @@ namespace DentalLab.Services
 
             var result = new PriceResult
             {
+                ServiceTypeId = service.Id,
                 ServiceName = service.Name,
                 GeneralPrice = service.UnitPrice,
                 Price = service.UnitPrice
             };
 
+            if (clinicId.HasValue)
+            {
+                var clinicSpecial = await _context.ClinicPrices
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.ClinicId == clinicId.Value && p.ServiceTypeId == serviceTypeId);
+
+                if (clinicSpecial != null)
+                {
+                    result.Price = clinicSpecial.Price;
+                    result.IsClinicPrice = true;
+                }
+            }
+
             if (doctorId.HasValue)
             {
-                var special = await _context.DoctorPrices
+                var doctorSpecial = await _context.DoctorPrices
                     .AsNoTracking()
                     .FirstOrDefaultAsync(p => p.DoctorId == doctorId.Value && p.ServiceTypeId == serviceTypeId);
 
-                if (special != null)
+                if (doctorSpecial != null)
                 {
-                    result.Price = special.Price;
+                    result.Price = doctorSpecial.Price;
                     result.IsDoctorPrice = true;
+                    result.IsClinicPrice = false;
                 }
             }
 
@@ -56,14 +71,14 @@ namespace DentalLab.Services
         /// الإعادة الأولى لهذه الحالة على المعمل (صفر)، والإعادة الثانية وما بعدها على الطبيب.
         /// وخطأ المعمل مجاني دائماً بصرف النظر عن الترتيب.
         /// </summary>
-        public async Task<RemakeResult> ResolveRemakeAsync(Guid caseId, Guid serviceTypeId, Guid? doctorId, string? reason)
+        public async Task<RemakeResult> ResolveRemakeAsync(Guid caseId, Guid serviceTypeId, Guid? doctorId, string? reason, Guid? clinicId = null)
         {
             var previousRemakes = await _context.LabCaseItems
                 .AsNoTracking()
                 .CountAsync(i => i.LabCaseId == caseId && i.IsRemake);
 
             var sequence = previousRemakes + 1;
-            var price = await ResolveAsync(serviceTypeId, doctorId);
+            var price = await ResolveAsync(serviceTypeId, doctorId, clinicId);
 
             var isLabFault = reason == RemakeReason.LabFault;
             var chargeable = sequence >= 2 && !isLabFault;
@@ -104,6 +119,28 @@ namespace DentalLab.Services
                 IsDoctorPrice = overrides.ContainsKey(s.Id)
             }).ToList();
         }
+
+        public async Task<List<PriceResult>> ResolveAllForClinicAsync(Guid clinicId)
+        {
+            var services = await _context.ServiceTypes
+                .AsNoTracking()
+                .OrderBy(s => s.Name)
+                .ToListAsync();
+
+            var overrides = await _context.ClinicPrices
+                .AsNoTracking()
+                .Where(p => p.ClinicId == clinicId)
+                .ToDictionaryAsync(p => p.ServiceTypeId, p => p.Price);
+
+            return services.Select(s => new PriceResult
+            {
+                ServiceTypeId = s.Id,
+                ServiceName = s.Name,
+                GeneralPrice = s.UnitPrice,
+                Price = overrides.TryGetValue(s.Id, out var special) ? special : s.UnitPrice,
+                IsClinicPrice = overrides.ContainsKey(s.Id)
+            }).ToList();
+        }
     }
 
     public class PriceResult
@@ -114,10 +151,12 @@ namespace DentalLab.Services
         /// <summary>السعر العام في قائمة الأسعار.</summary>
         public decimal GeneralPrice { get; set; }
 
-        /// <summary>السعر المطبَّق (الخاص إن وُجد، وإلا العام).</summary>
+        /// <summary>السعر المطبَّق (الطبيب ← العيادة ← العام).</summary>
         public decimal Price { get; set; }
 
         public bool IsDoctorPrice { get; set; }
+
+        public bool IsClinicPrice { get; set; }
 
         public decimal Difference => Price - GeneralPrice;
     }

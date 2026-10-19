@@ -1,4 +1,5 @@
 using DentalLab.Classes;
+using DentalLab.Models;
 using DentalLab.Models.Entities;
 using DentalLab.Models.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -12,10 +13,12 @@ namespace DentalLab.Controllers
     public class DoctorsController : BaseController
     {
         private readonly IUnitOfWork<Doctor> _doctors;
+        private readonly AppDbContext _context;
 
-        public DoctorsController(IUnitOfWork<Doctor> doctors, IWebHostEnvironment host) : base(host)
+        public DoctorsController(IUnitOfWork<Doctor> doctors, AppDbContext context, IWebHostEnvironment host) : base(host)
         {
             _doctors = doctors;
+            _context = context;
         }
 
         public async Task<IActionResult> Index()
@@ -65,6 +68,14 @@ namespace DentalLab.Controllers
             var item = await _doctors.Repository.GetByIdAsync(id);
             if (item == null)
                 return View("NotFound");
+
+            var caseCount = await _context.LabCases.CountAsync(c => c.DoctorId == id);
+            if (caseCount > 0)
+            {
+                TempData["ErrorMessage"] = $"لا يمكن حذف الطبيب «{item.Name}» لأن لديه {caseCount} حالة مرتبطة.";
+                return RedirectToAction(nameof(Index));
+            }
+
             _doctors.Repository.Delete(item);
             await _doctors.SaveAsync();
             TempData["SuccessMessage"] = "تم حذف الطبيب";

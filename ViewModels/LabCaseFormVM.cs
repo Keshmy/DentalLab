@@ -38,6 +38,13 @@ namespace DentalLab.ViewModels
         [Display(Name = "مكان الأسنان")]
         public string? ToothPosition { get; set; }
 
+        [Display(Name = "علوي / سفلي")]
+        public string? ToothArch { get; set; }
+
+        [StringLength(80)]
+        [Display(Name = "أرقام الأسنان")]
+        public string? ToothNumbers { get; set; }
+
         [StringLength(300)]
         [Display(Name = "ملاحظات")]
         public string? Notes { get; set; }
@@ -65,9 +72,11 @@ namespace DentalLab.ViewModels
         [Display(Name = "اسم الحالة")]
         public string PatientName { get; set; } = string.Empty;
 
+        [Required(ErrorMessage = "الطبيب مطلوب")]
         [Display(Name = "الطبيب")]
         public Guid? DoctorId { get; set; }
 
+        [Required(ErrorMessage = "المركز / العيادة مطلوبة")]
         [Display(Name = "المركز / العيادة")]
         public Guid? ClinicId { get; set; }
 

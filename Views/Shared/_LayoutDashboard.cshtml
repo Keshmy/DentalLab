@@ -38,8 +38,15 @@
                     <i class="mdi mdi-menu" aria-hidden="true"></i>
                 </button>
                 <a class="lab-top-brand" asp-controller="Admin" asp-action="Index">
-                    <img src="~/img/lab-logo.svg" alt="" class="lab-brand-icon" />
-                    <span class="lab-brand-text">حد السيف</span>
+                    @if (!string.IsNullOrWhiteSpace((string?)ViewBag.LogoUrl))
+                    {
+                        <img src="~/upload/@ViewBag.LogoUrl" alt="@ViewBag.SiteName" class="lab-brand-icon" />
+                    }
+                    else
+                    {
+                        <img src="~/img/lab-logo.svg" alt="" class="lab-brand-icon" />
+                    }
+                    <span class="lab-brand-text">@ViewBag.SiteName</span>
                 </a>
                 <ul class="navbar-nav navbar-nav-right me-auto">
                     <li class="nav-item nav-profile dropdown">
@@ -100,16 +107,36 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="@Url.Action("Index", "Doctors")" class="nav-link">
+                        <a class="nav-link" data-toggle="collapse" href="#doctorsMenu" aria-expanded="false">
                             <span class="icon-bg"><i class="bi bi-person-badge menu-icon"></i></span>
                             <span class="menu-title">الأطباء</span>
+                            <i class="menu-arrow"></i>
                         </a>
+                        <div class="collapse" id="doctorsMenu">
+                            <ul class="nav flex-column sub-menu">
+                                <li class="nav-item"><a href="@Url.Action("Index", "Doctors")" class="nav-link">قائمة الأطباء</a></li>
+                                @if (User.IsInRole("Prog") || User.IsInRole("Admin"))
+                                {
+                                    <li class="nav-item"><a href="@Url.Action("Index", "DoctorPrices")" class="nav-link">أسعار الأطباء</a></li>
+                                }
+                            </ul>
+                        </div>
                     </li>
                     <li class="nav-item">
-                        <a href="@Url.Action("Index", "Clinics")" class="nav-link">
+                        <a class="nav-link" data-toggle="collapse" href="#clinicsMenu" aria-expanded="false">
                             <span class="icon-bg"><i class="bi bi-hospital menu-icon"></i></span>
                             <span class="menu-title">العيادات</span>
+                            <i class="menu-arrow"></i>
                         </a>
+                        <div class="collapse" id="clinicsMenu">
+                            <ul class="nav flex-column sub-menu">
+                                <li class="nav-item"><a href="@Url.Action("Index", "Clinics")" class="nav-link">قائمة العيادات</a></li>
+                                @if (User.IsInRole("Prog") || User.IsInRole("Admin"))
+                                {
+                                    <li class="nav-item"><a href="@Url.Action("Index", "ClinicPrices")" class="nav-link">أسعار العيادات</a></li>
+                                }
+                            </ul>
+                        </div>
                     </li>
                     <li class="nav-item">
                         <a href="@Url.Action("Index", "ServiceTypes")" class="nav-link">
@@ -139,12 +166,6 @@
                             </div>
                         </li>
                         <li class="nav-item">
-                            <a href="@Url.Action("Index", "DoctorPrices")" class="nav-link">
-                                <span class="icon-bg"><i class="bi bi-percent menu-icon"></i></span>
-                                <span class="menu-title">أسعار الأطباء</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
                             <a class="nav-link" data-toggle="collapse" href="#users" aria-expanded="false">
                                 <span class="icon-bg"><i class="bi bi-people menu-icon"></i></span>
                                 <span class="menu-title">المستخدمون</span>
@@ -167,6 +188,7 @@
                             <div class="collapse" id="settings">
                                 <ul class="nav flex-column sub-menu">
                                     <li class="nav-item"><a href="@Url.Action("SiteDetails", "Admin")" class="nav-link">بيانات المختبر</a></li>
+                                    <li class="nav-item"><a href="@Url.Action("Backup", "Admin")" class="nav-link">النسخ الاحتياطي</a></li>
                                     <li class="nav-item"><a href="@Url.Action("ImportArchive", "Admin")" class="nav-link">استيراد الأرشيف</a></li>
                                     <li class="nav-item"><a href="@Url.Action("ImportFinance", "Admin")" class="nav-link">استيراد الماليات</a></li>
                                 </ul>

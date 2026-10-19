@@ -18,6 +18,7 @@ namespace DentalLab.Models
         public DbSet<Clinic> Clinics { get; set; }
         public DbSet<ServiceType> ServiceTypes { get; set; }
         public DbSet<DoctorPrice> DoctorPrices { get; set; }
+        public DbSet<ClinicPrice> ClinicPrices { get; set; }
         public DbSet<LabCase> LabCases { get; set; }
         public DbSet<LabCaseItem> LabCaseItems { get; set; }
         public DbSet<Invoice> Invoices { get; set; }
@@ -27,6 +28,7 @@ namespace DentalLab.Models
         public DbSet<Expense> Expenses { get; set; }
         public DbSet<IncomeEntry> IncomeEntries { get; set; }
         public DbSet<LoanTransaction> LoanTransactions { get; set; }
+        public DbSet<BackupSettings> BackupSettings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -39,8 +41,9 @@ namespace DentalLab.Models
             modelBuilder.Entity<Clinic>().Property(x => x.Id).HasDefaultValueSql("NEWID()");
             modelBuilder.Entity<ServiceType>().Property(x => x.Id).HasDefaultValueSql("NEWID()");
             modelBuilder.Entity<DoctorPrice>().Property(x => x.Id).HasDefaultValueSql("NEWID()");
-            modelBuilder.Entity<LabCase>().Property(x => x.Id).HasDefaultValueSql("NEWID()");
-            modelBuilder.Entity<LabCaseItem>().Property(x => x.Id).HasDefaultValueSql("NEWID()");
+            modelBuilder.Entity<ClinicPrice>().Property(x => x.Id).HasDefaultValueSql("NEWID()");
+            modelBuilder.Entity<LabCase>().Property(x => x.Id).HasDefaultValueSql("NEWID()").ValueGeneratedNever();
+            modelBuilder.Entity<LabCaseItem>().Property(x => x.Id).HasDefaultValueSql("NEWID()").ValueGeneratedNever();
             modelBuilder.Entity<Invoice>().Property(x => x.Id).HasDefaultValueSql("NEWID()");
             modelBuilder.Entity<InvoiceLine>().Property(x => x.Id).HasDefaultValueSql("NEWID()");
             modelBuilder.Entity<FinancialAccount>().Property(x => x.Id).HasDefaultValueSql("NEWID()");
@@ -48,6 +51,17 @@ namespace DentalLab.Models
             modelBuilder.Entity<Expense>().Property(x => x.Id).HasDefaultValueSql("NEWID()");
             modelBuilder.Entity<IncomeEntry>().Property(x => x.Id).HasDefaultValueSql("NEWID()");
             modelBuilder.Entity<LoanTransaction>().Property(x => x.Id).HasDefaultValueSql("NEWID()");
+            modelBuilder.Entity<BackupSettings>().Property(x => x.Id).ValueGeneratedNever();
+
+            modelBuilder.Entity<BackupSettings>().HasData(new BackupSettings
+            {
+                Id = Guid.Parse("b1000000-0000-0000-0000-000000000001"),
+                FolderPath = @"C:\DentalLabBackups",
+                AutoEnabled = true,
+                AutoHour = 2,
+                AutoMinute = 0,
+                Created = new DateTime(2026, 1, 1)
+            });
 
             modelBuilder.Entity<LabCase>()
                 .HasIndex(c => new { c.CaseNumber, c.Year });
@@ -109,6 +123,23 @@ namespace DentalLab.Models
             modelBuilder.Entity<DoctorPrice>()
                 .HasOne(p => p.ServiceType)
                 .WithMany(s => s.DoctorPrices)
+                .HasForeignKey(p => p.ServiceTypeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // سعر خاص واحد لكل (عيادة، نوع عمل)
+            modelBuilder.Entity<ClinicPrice>()
+                .HasIndex(p => new { p.ClinicId, p.ServiceTypeId })
+                .IsUnique();
+
+            modelBuilder.Entity<ClinicPrice>()
+                .HasOne(p => p.Clinic)
+                .WithMany(c => c.ClinicPrices)
+                .HasForeignKey(p => p.ClinicId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ClinicPrice>()
+                .HasOne(p => p.ServiceType)
+                .WithMany(s => s.ClinicPrices)
                 .HasForeignKey(p => p.ServiceTypeId)
                 .OnDelete(DeleteBehavior.Cascade);
 

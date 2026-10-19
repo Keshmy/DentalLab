@@ -1,0 +1,168 @@
+@model BackupPageVM
+@{
+    ViewData["Title"] = "النسخ الاحتياطي";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">النسخ الاحتياطي</h3>
+    <form asp-action="RunBackup" method="post" class="d-inline">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-primary"
+                onclick="return confirm('إنشاء نسخة احتياطية الآن؟');">
+            إنشاء نسخة الآن
+        </button>
+    </form>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
+
+<div class="alert alert-light border">
+    كل نسخة تُحفظ في مجلد باسم التاريخ والوقت مثل
+    <code>DentalLab_2026-10-02_143015</code>
+    ولا تستبدل النسخ القديمة.
+    <br />
+    تحتوي النسخة على ملف قاعدة البيانات <code>database.bak</code> وأرشيف الملفات المرفوعة <code>uploads.zip</code> إن وُجدت.
+    <br />
+    النسخ والاستعادة يعملان على <strong>السيرفر</strong> — يمكنك فتح الصفحة من أي جهاز (حتى جهازك المحلي) والضغط استعادة.
+    <br />
+    <strong>تحذير:</strong> الاستعادة تستبدل قاعدة البيانات الحالية بالكامل.
+</div>
+
+<form asp-action="BackupSettings" method="post" class="card mb-4">
+    <div class="card-header"><strong>الإعدادات</strong></div>
+    <div class="card-body row g-3">
+        <div class="col-12">
+            <label asp-for="FolderPath" class="form-label"></label>
+            <input asp-for="FolderPath" class="form-control" dir="ltr" />
+            <span asp-validation-for="FolderPath" class="text-danger"></span>
+            @if (!Model.FolderReady && !string.IsNullOrWhiteSpace(Model.FolderError))
+            {
+                <div class="text-danger small mt-1">تعذر الوصول للمجلد: @Model.FolderError</div>
+            }
+            else if (Model.FolderReady)
+            {
+                <div class="text-success small mt-1">المجلد جاهز للكتابة.</div>
+            }
+        </div>
+        <div class="col-12">
+            <label class="form-label">اختصارات سريعة</label>
+            <div class="d-flex flex-wrap gap-2">
+                @foreach (var folder in Model.SuggestedFolders)
+                {
+                    <button type="button" class="btn btn-sm btn-outline-secondary js-folder-pick" data-path="@folder" dir="ltr">@folder</button>
+                }
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="form-check mt-4">
+                <input asp-for="AutoEnabled" class="form-check-input" />
+                <label asp-for="AutoEnabled" class="form-check-label"></label>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="AutoHour" class="form-label"></label>
+            <input asp-for="AutoHour" class="form-control" type="number" min="0" max="23" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="AutoMinute" class="form-label"></label>
+            <input asp-for="AutoMinute" class="form-control" type="number" min="0" max="59" />
+        </div>
+        <div class="col-12 small text-muted">
+            الوقت بالتوقيت المحلي للجهاز. مثال: الساعة 2 والدقيقة 0 = يومياً الساعة 02:00 صباحاً.
+            @if (!string.IsNullOrWhiteSpace(Model.LastAutoBackupDate))
+            {
+                <span>آخر نسخ تلقائي: @Model.LastAutoBackupDate</span>
+            }
+            @if (Model.LastBackupAt.HasValue)
+            {
+                <span> — آخر عملية: @Model.LastBackupAt.Value.ToString("yyyy/M/d HH:mm")</span>
+            }
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.LastBackupMessage))
+        {
+            <div class="col-12"><div class="alert alert-secondary mb-0 small">@Model.LastBackupMessage</div></div>
+        }
+        <div class="col-12">
+            <button class="btn btn-outline-primary">حفظ الإعدادات</button>
+        </div>
+    </div>
+</form>
+
+<div class="card mb-4">
+    <div class="card-header"><strong>استعادة من ملف على جهازك</strong></div>
+    <form asp-action="RestoreUpload" method="post" enctype="multipart/form-data" class="card-body row g-3">
+        @Html.AntiForgeryToken()
+        <div class="col-md-8">
+            <label class="form-label">رفع نسخة (.bak أو .zip تحتوي database.bak)</label>
+            <input type="file" name="backupFile" class="form-control" accept=".bak,.zip" required />
+            <div class="form-text">يُرفع الملف إلى السيرفر ثم تُستعاد قاعدة البيانات هناك.</div>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <button type="submit" class="btn btn-warning"
+                    onclick="return confirm('سيتم استبدال قاعدة البيانات الحالية بالنسخة المرفوعة. هل أنت متأكد؟');">
+                رفع واستعادة
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-header"><strong>النسخ الموجودة على السيرفر (@Model.ExistingBackups.Count)</strong></div>
+    <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>الاسم</th>
+                    <th>تاريخ الإنشاء</th>
+                    <th>الحجم</th>
+                    <th>المسار</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var b in Model.ExistingBackups)
+                {
+                    <tr>
+                        <td>@b.Name</td>
+                        <td>@b.Created.ToString("yyyy/M/d HH:mm")</td>
+                        <td>@b.SizeDisplay</td>
+                        <td class="small" dir="ltr">@b.FullPath</td>
+                        <td class="text-nowrap">
+                            <form asp-action="RestoreBackup" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="path" value="@b.FullPath" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('استعادة النسخة @b.Name؟\nسيتم استبدال كل البيانات الحالية.');">
+                                    استعادة
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                @if (Model.ExistingBackups.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-muted">لا توجد نسخ بعد.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.querySelectorAll('.js-folder-pick').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var input = document.querySelector('[name="FolderPath"]');
+                if (input) input.value = btn.getAttribute('data-path');
+            });
+        });
+    </script>
+}

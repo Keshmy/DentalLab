@@ -18,7 +18,14 @@
             <option value="">كل الأشهر</option>
             @for (int m = 1; m <= 12; m++)
             {
-                <option value="@m" selected="@((int?)ViewBag.Month == m)">شهر @m</option>
+                if ((int?)ViewBag.Month == m)
+                {
+                    <option value="@m" selected>شهر @m</option>
+                }
+                else
+                {
+                    <option value="@m">شهر @m</option>
+                }
             }
         </select>
     </div>
@@ -118,7 +125,17 @@
                         <span class="badge bg-secondary">لم تُفوتر</span>
                     }
                 </td>
-                <td><a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">عرض</a></td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">عرض</a>
+                    @if (!item.IsInvoiced)
+                    {
+                        <form asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline"
+                              onsubmit="return confirm('حذف الحالة وكل أسطرها؟');">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-danger">حذف</button>
+                        </form>
+                    }
+                </td>
             </tr>
         }
     </tbody>
