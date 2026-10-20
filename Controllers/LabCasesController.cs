@@ -123,9 +123,12 @@ namespace DentalLab.Controllers
             await BuildItems(labCase, lines);
 
             _context.LabCases.Add(labCase);
+            var creditCreated = await TryCreateClinicCreditAsync(labCase, model);
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = $"تم إضافة الحالة — الإجمالي {labCase.Total:N2}";
+            TempData["SuccessMessage"] = creditCreated
+                ? $"تم إضافة الحالة وإنشاء رصيد دائن {model.ClinicCreditAmount ?? labCase.Total:N2}"
+                : $"تم إضافة الحالة — الإجمالي {labCase.Total:N2}";
             return RedirectToAction(nameof(Details), new { id = labCase.Id });
         }
 
@@ -144,7 +147,7 @@ namespace DentalLab.Controllers
                 return View("NotFound");
 
             await FillLookups();
-            return View(ToForm(labCase));
+            return View(await ToFormAsync(labCase));
         }
 
         [HttpPost]
@@ -181,6 +184,11 @@ namespace DentalLab.Controllers
                 await FillLookups();
                 model.IsInvoiced = existing.InvoiceId.HasValue;
                 model.InvoiceNumber = existing.InvoiceNumber;
+                var existingCredit = await _context.ClinicCreditEntries
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(c => c.LabCaseId == id);
+                model.HasClinicCredit = existingCredit != null;
+                model.ExistingClinicCreditAmount = existingCredit?.Amount ?? 0m;
                 if (model.Items.Count == 0)
                     model.Items.Add(new LabCaseItemFormVM());
                 return View(model);
@@ -225,6 +233,8 @@ namespace DentalLab.Controllers
             var shell = new LabCase
             {
                 Id = id,
+                CaseNumber = model.CaseNumber,
+                PatientName = model.PatientName,
                 DoctorId = model.DoctorId,
                 ClinicId = model.ClinicId,
                 Status = model.Status
@@ -234,11 +244,15 @@ namespace DentalLab.Controllers
             foreach (var item in shell.Items)
                 _context.LabCaseItems.Add(item);
 
+            var creditCreated = await TryCreateClinicCreditAsync(shell, model);
+
             await _context.SaveChangesAsync();
             await tx.CommitAsync();
 
             var total = shell.Items.Sum(i => i.LineTotal);
-            TempData["SuccessMessage"] = $"تم حفظ الحالة — الإجمالي {total:N2}";
+            TempData["SuccessMessage"] = creditCreated
+                ? $"تم حفظ الحالة وإنشاء رصيد دائن {model.ClinicCreditAmount ?? total:N2}"
+                : $"تم حفظ الحالة — الإجمالي {total:N2}";
             return RedirectToAction(nameof(Details), new { id });
         }
 
@@ -419,44 +433,95 @@ namespace DentalLab.Controllers
             }
         }
 
-        private static LabCaseFormVM ToForm(LabCase labCase) => new()
+        private async Task<LabCaseFormVM> ToFormAsync(LabCase labCase)
         {
-            Id = labCase.Id,
-            CaseNumber = labCase.CaseNumber,
-            PatientName = labCase.PatientName,
-            DoctorId = labCase.DoctorId,
-            ClinicId = labCase.ClinicId,
-            ReceivedDate = labCase.ReceivedDate,
-            DeliveryDate = labCase.DeliveryDate,
-            Notes = labCase.Notes,
-            Year = labCase.Year,
-            Month = labCase.Month,
-            Status = labCase.Status,
-            IsInvoiced = labCase.InvoiceId.HasValue,
-            InvoiceNumber = labCase.Invoice?.Number,
-            Items = labCase.Items
-                .OrderBy(i => i.IsRemake)
-                .ThenBy(i => i.Created)
-                .Select(i =>
-                {
-                    var (arch, numbers) = ParseTooth(i.ToothPosition);
-                    return new LabCaseItemFormVM
+            var credit = await _context.ClinicCreditEntries
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.LabCaseId == labCase.Id);
+
+            return new LabCaseFormVM
+            {
+                Id = labCase.Id,
+                CaseNumber = labCase.CaseNumber,
+                PatientName = labCase.PatientName,
+                DoctorId = labCase.DoctorId,
+                ClinicId = labCase.ClinicId,
+                ReceivedDate = labCase.ReceivedDate,
+                DeliveryDate = labCase.DeliveryDate,
+                Notes = labCase.Notes,
+                Year = labCase.Year,
+                Month = labCase.Month,
+                Status = labCase.Status,
+                IsInvoiced = labCase.InvoiceId.HasValue,
+                InvoiceNumber = labCase.Invoice?.Number,
+                HasClinicCredit = credit != null,
+                ExistingClinicCreditAmount = credit?.Amount ?? 0m,
+                ClinicCreditAmount = credit?.Amount ?? labCase.Total,
+                Items = labCase.Items
+                    .OrderBy(i => i.IsRemake)
+                    .ThenBy(i => i.Created)
+                    .Select(i =>
                     {
-                        Id = i.Id,
-                        ServiceTypeId = i.ServiceTypeId,
-                        ProductName = i.ProductName,
-                        Quantity = i.Quantity,
-                        UnitPrice = i.UnitPrice,
-                        UnitCost = i.UnitCost,
-                        IsRemake = i.IsRemake,
-                        RemakeReason = i.RemakeReason,
-                        ToothArch = arch,
-                        ToothNumbers = numbers,
-                        ToothPosition = i.ToothPosition,
-                        Notes = i.Notes
-                    };
-                }).ToList()
-        };
+                        var (arch, numbers) = ParseTooth(i.ToothPosition);
+                        return new LabCaseItemFormVM
+                        {
+                            Id = i.Id,
+                            ServiceTypeId = i.ServiceTypeId,
+                            ProductName = i.ProductName,
+                            Quantity = i.Quantity,
+                            UnitPrice = i.UnitPrice,
+                            UnitCost = i.UnitCost,
+                            IsRemake = i.IsRemake,
+                            RemakeReason = i.RemakeReason,
+                            ToothArch = arch,
+                            ToothNumbers = numbers,
+                            ToothPosition = i.ToothPosition,
+                            Notes = i.Notes
+                        };
+                    }).ToList()
+            };
+        }
+
+        /// <summary>
+        /// عند إلغاء حالة مدفوعة مسبقاً: إنشاء رصيد دائن للعيادة مرة واحدة لكل حالة.
+        /// </summary>
+        private async Task<bool> TryCreateClinicCreditAsync(LabCase labCase, LabCaseFormVM model)
+        {
+            if (!model.CreateClinicCredit)
+                return false;
+
+            if (labCase.Status != CaseStatus.Cancelled)
+                return false;
+
+            if (!labCase.ClinicId.HasValue)
+            {
+                TempData["ErrorMessage"] = "لا يمكن إنشاء رصيد دائن بدون تحديد العيادة.";
+                return false;
+            }
+
+            var amount = model.ClinicCreditAmount ?? labCase.Total;
+            if (amount <= 0)
+                return false;
+
+            var exists = await _context.ClinicCreditEntries
+                .AnyAsync(c => c.LabCaseId == labCase.Id);
+
+            if (exists)
+                return false;
+
+            _context.ClinicCreditEntries.Add(new ClinicCreditEntry
+            {
+                Id = Guid.NewGuid(),
+                ClinicId = labCase.ClinicId.Value,
+                LabCaseId = labCase.Id,
+                Amount = amount,
+                Date = DateTime.Now.Date,
+                Notes = $"إلغاء حالة مدفوعة — رقم {labCase.CaseNumber} — {labCase.PatientName}",
+                Created = DateTime.UtcNow
+            });
+
+            return true;
+        }
 
         /// <summary>يصلح قيم العدد الفارغة قبل التحقق حتى لا يفشل التعديل بعد الحفظ.</summary>
         private static void NormalizeItems(LabCaseFormVM model)

@@ -29,6 +29,7 @@ namespace DentalLab.Models
         public DbSet<IncomeEntry> IncomeEntries { get; set; }
         public DbSet<LoanTransaction> LoanTransactions { get; set; }
         public DbSet<BackupSettings> BackupSettings { get; set; }
+        public DbSet<ClinicCreditEntry> ClinicCreditEntries { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -62,6 +63,8 @@ namespace DentalLab.Models
                 AutoMinute = 0,
                 Created = new DateTime(2026, 1, 1)
             });
+
+            modelBuilder.Entity<ClinicCreditEntry>().Property(x => x.Id).HasDefaultValueSql("NEWID()");
 
             modelBuilder.Entity<LabCase>()
                 .HasIndex(c => new { c.CaseNumber, c.Year });
@@ -207,9 +210,28 @@ namespace DentalLab.Models
                 .HasForeignKey(l => l.FinancialAccountId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            modelBuilder.Entity<ClinicCreditEntry>()
+                .HasOne(c => c.Clinic)
+                .WithMany(cl => cl.CreditEntries)
+                .HasForeignKey(c => c.ClinicId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ClinicCreditEntry>()
+                .HasOne(c => c.LabCase)
+                .WithMany()
+                .HasForeignKey(c => c.LabCaseId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // قيد رصيد واحد لكل حالة ملغاة — يمنع التكرار عند إعادة الحفظ
+            modelBuilder.Entity<ClinicCreditEntry>()
+                .HasIndex(c => c.LabCaseId)
+                .IsUnique()
+                .HasFilter("[LabCaseId] IS NOT NULL");
+
             modelBuilder.Entity<Expense>().HasIndex(e => new { e.Year, e.Month });
             modelBuilder.Entity<IncomeEntry>().HasIndex(e => new { e.Year, e.Month });
             modelBuilder.Entity<LoanTransaction>().HasIndex(e => new { e.Year, e.Month });
+            modelBuilder.Entity<ClinicCreditEntry>().HasIndex(e => e.ClinicId);
 
             modelBuilder.Seed();
         }

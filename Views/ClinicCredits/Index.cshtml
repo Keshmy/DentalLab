@@ -1,0 +1,92 @@
+@model IEnumerable<ClinicCreditEntry>
+@{
+    ViewData["Title"] = "الرصيد الدائن للعيادات";
+    var rows = Model ?? Enumerable.Empty<ClinicCreditEntry>();
+    var total = rows.Sum(e => e.Amount);
+    var filterClinicId = (Guid?)ViewBag.ClinicId;
+}
+<partial name="Partial/_datatables-css" />
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">الرصيد الدائن للعيادات</h3>
+    <div class="d-flex gap-2">
+        <a asp-action="Create" class="btn btn-primary">قيد يدوي</a>
+        <a asp-controller="Finance" asp-action="Receivables" class="btn btn-outline-secondary">ذمم المراكز</a>
+    </div>
+</div>
+
+<div class="alert alert-light border">
+    الرصيد الدائن يُخصم من ذمم العيادة تلقائياً. يُنشأ عادةً عند إلغاء حالة مدفوعة مسبقاً، ويمكن إضافة قيد يدوي هنا.
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-4">
+        <select name="clinicId" class="form-select" asp-items="ViewBag.Clinics">
+            <option value="">كل العيادات</option>
+        </select>
+    </div>
+    <div class="col-md-4">
+        <button class="btn btn-outline-primary">تصفية</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">إعادة</a>
+    </div>
+</form>
+
+<div class="row g-2 mb-3">
+    <div class="col-md-4">
+        <div class="card"><div class="card-body py-2">
+            <div class="small text-muted">إجمالي الرصيد الدائن@(filterClinicId.HasValue ? " (المصفّى)" : "")</div>
+            <div class="fs-5 fw-bold text-primary">@total.ToString("N2")</div>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card"><div class="card-body py-2">
+            <div class="small text-muted">عدد القيود</div>
+            <div class="fs-5 fw-bold">@rows.Count()</div>
+        </div></div>
+    </div>
+</div>
+
+<table id="table1" class="table table-striped table-bordered table-hover w-100">
+    <thead>
+        <tr>
+            <th>التاريخ</th>
+            <th>العيادة</th>
+            <th>المبلغ</th>
+            <th>الحالة</th>
+            <th>ملاحظات</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var e in rows)
+        {
+            <tr>
+                <td>@e.Date.ToString("yyyy/M/d")</td>
+                <td>@e.Clinic?.Name</td>
+                <td class="text-primary fw-bold">@e.Amount.ToString("N2")</td>
+                <td>
+                    @if (e.LabCase != null)
+                    {
+                        <a asp-controller="LabCases" asp-action="Details" asp-route-id="@e.LabCaseId">
+                            #@e.LabCase.CaseNumber — @e.LabCase.PatientName
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="text-muted">يدوي</span>
+                    }
+                </td>
+                <td>@e.Notes</td>
+                <td class="text-nowrap">
+                    <form asp-action="Delete" asp-route-id="@e.Id" method="post" class="d-inline"
+                          onsubmit="return confirm('حذف قيد الرصيد الدائن؟');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-outline-danger">حذف</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@section Scripts { <partial name="Partial/_datatables-js" /> }

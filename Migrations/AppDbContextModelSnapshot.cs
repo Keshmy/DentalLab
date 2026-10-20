@@ -209,6 +209,46 @@ namespace DentalLab.Migrations
                     b.ToTable("Clinics");
                 });
 
+            modelBuilder.Entity("DentalLab.Models.Entities.ClinicCreditEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWID()");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("ClinicId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("LabCaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("Modified")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClinicId");
+
+                    b.HasIndex("LabCaseId")
+                        .IsUnique()
+                        .HasFilter("[LabCaseId] IS NOT NULL");
+
+                    b.ToTable("ClinicCreditEntries");
+                });
+
             modelBuilder.Entity("DentalLab.Models.Entities.ClinicPrice", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1283,6 +1323,24 @@ namespace DentalLab.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("DentalLab.Models.Entities.ClinicCreditEntry", b =>
+                {
+                    b.HasOne("DentalLab.Models.Entities.Clinic", "Clinic")
+                        .WithMany("CreditEntries")
+                        .HasForeignKey("ClinicId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DentalLab.Models.Entities.LabCase", "LabCase")
+                        .WithMany()
+                        .HasForeignKey("LabCaseId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Clinic");
+
+                    b.Navigation("LabCase");
+                });
+
             modelBuilder.Entity("DentalLab.Models.Entities.ClinicPrice", b =>
                 {
                     b.HasOne("DentalLab.Models.Entities.Clinic", "Clinic")
@@ -1530,6 +1588,8 @@ namespace DentalLab.Migrations
             modelBuilder.Entity("DentalLab.Models.Entities.Clinic", b =>
                 {
                     b.Navigation("ClinicPrices");
+
+                    b.Navigation("CreditEntries");
 
                     b.Navigation("Invoices");
 

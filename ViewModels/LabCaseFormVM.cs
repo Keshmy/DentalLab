@@ -120,6 +120,19 @@ namespace DentalLab.ViewModels
 
         public int? InvoiceNumber { get; set; }
 
+        /// <summary>عند الإلغاء: تحويل المبلغ المدفوع مسبقاً إلى رصيد دائن للعيادة.</summary>
+        [Display(Name = "تحويل المبلغ المدفوع إلى رصيد دائن")]
+        public bool CreateClinicCredit { get; set; }
+
+        [Display(Name = "مبلغ الرصيد الدائن")]
+        [Range(0, 100000000)]
+        public decimal? ClinicCreditAmount { get; set; }
+
+        /// <summary>يوجد مسبقاً قيد رصيد دائن مرتبط بهذه الحالة.</summary>
+        public bool HasClinicCredit { get; set; }
+
+        public decimal ExistingClinicCreditAmount { get; set; }
+
         [Display(Name = "إجمالي الحالة")]
         public decimal Total => Items.Where(i => !i.IsEmpty).Sum(i => i.LineTotal);
 

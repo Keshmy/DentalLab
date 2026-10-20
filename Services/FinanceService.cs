@@ -221,6 +221,11 @@ namespace DentalLab.Services
                 .Select(g => new { ClinicId = g.Key, Total = g.Sum(x => x.Amount) })
                 .ToListAsync();
 
+            var credits = await _context.ClinicCreditEntries
+                .GroupBy(e => e.ClinicId)
+                .Select(g => new { ClinicId = (Guid?)g.Key, Total = g.Sum(x => x.Amount) })
+                .ToListAsync();
+
             var list = clinics.Select(c => new ClinicReceivableVM
             {
                 ClinicId = c.Id,
@@ -229,7 +234,8 @@ namespace DentalLab.Services
                 Invoiced = work.FirstOrDefault(w => w.ClinicId == c.Id)?.Total ?? 0m,
                 Units = work.FirstOrDefault(w => w.ClinicId == c.Id)?.Units ?? 0,
                 CaseCount = work.FirstOrDefault(w => w.ClinicId == c.Id)?.Cases ?? 0,
-                Collected = collected.FirstOrDefault(p => p.ClinicId == c.Id)?.Total ?? 0m
+                Collected = collected.FirstOrDefault(p => p.ClinicId == c.Id)?.Total ?? 0m,
+                CreditBalance = credits.FirstOrDefault(p => p.ClinicId == c.Id)?.Total ?? 0m
             }).ToList();
 
             // أعمال وتحصيلات غير مرتبطة بعيادة
@@ -249,7 +255,7 @@ namespace DentalLab.Services
                 });
             }
 
-            return list.Where(x => x.Invoiced != 0 || x.Collected != 0 || x.OpeningBalance != 0)
+            return list.Where(x => x.Invoiced != 0 || x.Collected != 0 || x.OpeningBalance != 0 || x.CreditBalance != 0)
                        .OrderByDescending(x => x.Balance)
                        .ToList();
         }

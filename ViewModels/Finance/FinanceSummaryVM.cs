@@ -179,8 +179,11 @@ namespace DentalLab.ViewModels.Finance
         [Display(Name = "المحصّل")]
         public decimal Collected { get; set; }
 
+        [Display(Name = "رصيد دائن")]
+        public decimal CreditBalance { get; set; }
+
         [Display(Name = "المتبقي")]
-        public decimal Balance => OpeningBalance + Invoiced - Collected;
+        public decimal Balance => OpeningBalance + Invoiced - Collected - CreditBalance;
 
         [Display(Name = "عدد الحالات")]
         public int CaseCount { get; set; }

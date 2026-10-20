@@ -6,28 +6,37 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h3 class="fw-bold mb-0">ذمم المراكز</h3>
-    <a asp-action="Index" class="btn btn-outline-secondary">الأرباح والخسائر</a>
+    <div class="d-flex gap-2">
+        <a asp-controller="ClinicCredits" asp-action="Index" class="btn btn-outline-primary">الرصيد الدائن</a>
+        <a asp-action="Index" class="btn btn-outline-secondary">الأرباح والخسائر</a>
+    </div>
 </div>
 
 <div class="alert alert-light border">
-    المتبقي على كل مركز = <strong>رصيد افتتاحي + إجمالي أعماله − ما حُصِّل منه</strong>.
-    إجمالي الأعمال يُحسب من أسطر الحالات مباشرة، والتحصيل من سجل الإيرادات المُستلمة.
+    المتبقي على كل مركز = <strong>رصيد افتتاحي + إجمالي أعماله − ما حُصِّل منه − الرصيد الدائن</strong>.
+    الرصيد الدائن ينشأ عند إلغاء خدمة دُفعت مسبقاً ويُخصم تلقائياً من الذمم.
 </div>
 
 <div class="row g-2 mb-3">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card"><div class="card-body py-2">
             <div class="small text-muted">إجمالي الأعمال</div>
             <div class="fs-5 fw-bold">@Model.Sum(x => x.Invoiced).ToString("N2")</div>
         </div></div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card"><div class="card-body py-2">
             <div class="small text-muted">المحصَّل</div>
             <div class="fs-5 fw-bold text-success">@Model.Sum(x => x.Collected).ToString("N2")</div>
         </div></div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="small text-muted">رصيد دائن</div>
+            <div class="fs-5 fw-bold text-primary">@Model.Sum(x => x.CreditBalance).ToString("N2")</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
         <div class="card"><div class="card-body py-2">
             <div class="small text-muted">المتبقي (ديون)</div>
             <div class="fs-5 fw-bold text-danger">@Model.Sum(x => x.Balance).ToString("N2")</div>
@@ -44,6 +53,7 @@
             <th>رصيد افتتاحي</th>
             <th>إجمالي الأعمال</th>
             <th>المحصَّل</th>
+            <th>رصيد دائن</th>
             <th>المتبقي</th>
         </tr>
     </thead>
@@ -57,6 +67,7 @@
                 <td>@r.OpeningBalance.ToString("N2")</td>
                 <td>@r.Invoiced.ToString("N2")</td>
                 <td class="text-success">@r.Collected.ToString("N2")</td>
+                <td class="text-primary">@r.CreditBalance.ToString("N2")</td>
                 <td class="fw-bold @(r.Balance > 0 ? "text-danger" : r.Balance < 0 ? "text-primary" : "")">
                     @r.Balance.ToString("N2")
                 </td>
@@ -68,6 +79,7 @@
             <th colspan="4" class="text-end">الإجمالي</th>
             <th>@Model.Sum(x => x.Invoiced).ToString("N2")</th>
             <th>@Model.Sum(x => x.Collected).ToString("N2")</th>
+            <th>@Model.Sum(x => x.CreditBalance).ToString("N2")</th>
             <th>@Model.Sum(x => x.Balance).ToString("N2")</th>
         </tr>
     </tfoot>

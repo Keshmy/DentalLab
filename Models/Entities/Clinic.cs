@@ -29,5 +29,7 @@ namespace DentalLab.Models.Entities
         public ICollection<IncomeEntry> Payments { get; set; } = new List<IncomeEntry>();
 
         public ICollection<ClinicPrice> ClinicPrices { get; set; } = new List<ClinicPrice>();
+
+        public ICollection<ClinicCreditEntry> CreditEntries { get; set; } = new List<ClinicCreditEntry>();
     }
 }

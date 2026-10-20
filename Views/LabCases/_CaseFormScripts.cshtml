@@ -238,6 +238,38 @@
         if (clinicSelect) clinicSelect.addEventListener('change', refreshAllPrices);
         if (statusSelect) statusSelect.addEventListener('change', updateStatusHelp);
 
+        var creditPanel = document.getElementById('clinicCreditPanel');
+        var creditAmount = document.getElementById('clinicCreditAmount');
+        var cancelledStatus = 'ملغي';
+
+        function toggleCreditPanel() {
+            if (!creditPanel || !statusSelect) return;
+            creditPanel.style.display = statusSelect.value === cancelledStatus ? '' : 'none';
+        }
+
+        if (statusSelect) {
+            statusSelect.addEventListener('change', toggleCreditPanel);
+            toggleCreditPanel();
+        }
+
+        var originalRecalc = recalc;
+        recalc = function () {
+            originalRecalc();
+            if (creditAmount && !creditAmount.dataset.touched) {
+                var sumEl = document.getElementById('sumTotal');
+                if (sumEl) {
+                    var n = parseFloat(String(sumEl.textContent).replace(/,/g, '')) || 0;
+                    creditAmount.value = n.toFixed(2);
+                }
+            }
+        };
+
+        if (creditAmount) {
+            creditAmount.addEventListener('input', function () {
+                creditAmount.dataset.touched = '1';
+            });
+        }
+
         updateStatusHelp();
         recalc();
     })();
