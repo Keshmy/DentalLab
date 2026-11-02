@@ -18,6 +18,34 @@
     </None>
   </ItemGroup>
 
+  <!--
+    حجم النشر: الاستضافة المجانية (Somee) تسمح بـ 150 MB تقريباً.
+    نستبعد ما لا يحتاجه الخادم: ملفات مكتبات الواجهة غير المستخدمة، ملفات .map،
+    النسخ المضغوطة المسبقة (التطبيق يستخدم UseStaticFiles)، ورموز التصحيح.
+  -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <CompressionEnabled>false</CompressionEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- مجلدات نشر قديمة داخل مجلد المشروع لا تدخل في البناء أو النشر -->
+    <Compile Remove="publish\**;DentalLab_Somee_Publish\**" />
+    <Content Remove="publish\**;DentalLab_Somee_Publish\**" />
+    <None Remove="publish\**;DentalLab_Somee_Publish\**" />
+    <EmbeddedResource Remove="publish\**;DentalLab_Somee_Publish\**" />
+
+    <!-- من wwwroot/lib تُنشر فقط الملفات التي تحمّلها الصفحات فعلاً (عند إضافة مكتبة جديدة أضفها هنا) -->
+    <Content Update="wwwroot\lib\**" CopyToPublishDirectory="Never" />
+    <Content Update="wwwroot\lib\bootstrap\dist\css\bootstrap.rtl.min.css;wwwroot\lib\bootstrap\dist\js\bootstrap.bundle.min.js;wwwroot\lib\jquery\dist\jquery.min.js;wwwroot\lib\jquery-validation\dist\jquery.validate.min.js;wwwroot\lib\jquery-validation-unobtrusive\dist\jquery.validate.unobtrusive.min.js" CopyToPublishDirectory="PreserveNewest" />
+
+    <Content Update="wwwroot\**\*.map" CopyToPublishDirectory="Never" />
+    <!-- ملفات الرفع على الخادم تبقى كما هي؛ لا ننسخ الملفات المحلية فوقها -->
+    <Content Update="wwwroot\upload\**" CopyToPublishDirectory="Never" />
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="14.0.0" />
     <PackageReference Include="ClosedXML" Version="0.104.2" />
