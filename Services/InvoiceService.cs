@@ -111,11 +111,14 @@ namespace DentalLab.Services
         public async Task<Invoice?> IssueAsync(Guid? clinicId, Guid? doctorId, int year, int month, string? notes)
         {
             var preview = await BuildPreviewAsync(clinicId, doctorId, year, month);
-            if (preview.Lines.Count == 0)
-                return null;
 
             if (preview.ExistingInvoice != null)
                 return preview.ExistingInvoice;
+
+            // الحالات المرتبطة بفاتورة أخرى لا تدخل هذه الفاتورة (منع المطالبة مرتين).
+            var billable = preview.BillableLines.ToList();
+            if (billable.Count == 0)
+                return null;
 
             var nextNumber = (await _context.Invoices.MaxAsync(i => (int?)i.Number) ?? 0) + 1;
 
@@ -137,7 +140,7 @@ namespace DentalLab.Services
                 Created = DateTime.UtcNow
             };
 
-            foreach (var line in preview.Lines)
+            foreach (var line in billable)
             {
                 invoice.Lines.Add(new InvoiceLine
                 {
@@ -158,7 +161,7 @@ namespace DentalLab.Services
 
             _context.Invoices.Add(invoice);
 
-            var caseIds = preview.Lines.Select(l => l.LabCaseId).Distinct().ToList();
+            var caseIds = billable.Select(l => l.LabCaseId).Distinct().ToList();
             var cases = await _context.LabCases
                 .Where(c => caseIds.Contains(c.Id) && c.InvoiceId == null)
                 .ToListAsync();

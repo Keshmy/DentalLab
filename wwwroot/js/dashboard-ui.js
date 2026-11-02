@@ -137,3 +137,114 @@
         });
     });
 })(jQuery);
+
+// خلايا الجداول: الأرقام والمبالغ والتواريخ تبقى على سطر واحد، وباقي النص يلتف (انظر site.css).
+(function ($) {
+    'use strict';
+
+    var compact = /^[\s\d٠-٩.,،:\/\-+%×()]+$/;
+
+    function markCells(root) {
+        $(root).find('.table td, .table th').each(function () {
+            var text = (this.textContent || '').trim();
+            if (text.length > 0 && text.length <= 24 && compact.test(text)) {
+                this.classList.add('cell-nowrap');
+            }
+        });
+    }
+
+    $(function () {
+        markCells(document);
+        // DataTables يعيد رسم الصفوف عند التنقل بين الصفحات أو البحث.
+        $(document).on('draw.dt', function (e) { markCells(e.target); });
+    });
+})(jQuery);
+
+// قوائم قابلة للبحث (Tom Select): الطبيب والعيادة في كل الصفحات، وأي <select class="js-searchable">.
+// حقل نصي فيه data-suggest-url يصبح حقلاً باقتراحات (مثل اسم الحالة) مع السماح بكتابة اسم جديد.
+(function ($) {
+    'use strict';
+
+    if (typeof TomSelect === 'undefined') return;
+
+    // توحيد الكتابة العربية للبحث: أ/إ/آ ← ا، ة ← ه، ى ← ي، وحذف التشكيل والتطويل.
+    function norm(s) {
+        return (s || '').toString().toLowerCase()
+            .replace(/[\u064B-\u0652\u0640]/g, '')
+            .replace(/[أإآٱ]/g, 'ا')
+            .replace(/ة/g, 'ه')
+            .replace(/ى/g, 'ي')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function score(search) {
+        var q = norm(search);
+        return function (item) {
+            if (!q) return 1;
+            return norm(item.text).indexOf(q) > -1 ? 1 : 0;
+        };
+    }
+
+    var texts = {
+        no_results: function () { return '<div class="no-results">لا توجد نتائج</div>'; },
+        option_create: function (data, escape) { return '<div class="create">إضافة: <strong>' + escape(data.input) + '</strong></div>'; }
+    };
+
+    function enhanceSelect(el) {
+        if (el.tomselect || el.multiple) return;
+        var empty = el.querySelector('option[value=""]');
+        new TomSelect(el, {
+            plugins: ['dropdown_input'],
+            allowEmptyOption: true,
+            placeholder: empty ? empty.textContent.trim() : '',
+            maxOptions: 500,
+            score: score,
+            render: texts,
+            onDropdownOpen: function () {
+                var input = this.dropdown.querySelector('.dropdown-input');
+                if (input) input.setAttribute('placeholder', 'بحث...');
+            }
+        });
+    }
+
+    function enhanceSuggest(el) {
+        if (el.tomselect) return;
+        var url = el.getAttribute('data-suggest-url');
+        new TomSelect(el, {
+            plugins: ['dropdown_input'],
+            maxItems: 1,
+            create: true,
+            createOnBlur: true,
+            persist: false,
+            valueField: 'value',
+            labelField: 'value',
+            searchField: [],
+            score: score,
+            render: texts,
+            shouldLoad: function (q) { return q.length >= 1; },
+            load: function (q, callback) {
+                fetch(url + (url.indexOf('?') > -1 ? '&' : '?') + 'q=' + encodeURIComponent(q),
+                    { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(function (r) { return r.ok ? r.json() : []; })
+                    .then(function (names) {
+                        callback(names.map(function (n) { return { value: n, text: n }; }));
+                    })
+                    .catch(function () { callback(); });
+            },
+            onDropdownOpen: function () {
+                var input = this.dropdown.querySelector('.dropdown-input');
+                if (input) input.setAttribute('placeholder', 'اكتب للبحث أو لإضافة اسم جديد...');
+            }
+        });
+    }
+
+    $(function () {
+        document.querySelectorAll('select').forEach(function (el) {
+            var name = (el.getAttribute('name') || '').toLowerCase();
+            if (name === 'doctorid' || name === 'clinicid' || el.classList.contains('js-searchable'))
+                enhanceSelect(el);
+        });
+        document.querySelectorAll('input[data-suggest-url]').forEach(enhanceSuggest);
+    });
+})(jQuery);

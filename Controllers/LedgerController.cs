@@ -32,6 +32,41 @@ namespace DentalLab.Controllers
         }
 
         public async Task<IActionResult> Index(int? year, int? month)
+            => View(await BuildAsync(year, month));
+
+        /// <summary>تصدير سجل الصندوق لشهر واحد.</summary>
+        [HttpGet]
+        public async Task<IActionResult> Export(int? year, int? month, string? format, [FromServices] ExportService export)
+        {
+            var vm = await BuildAsync(year, month);
+            var closing = vm.Rows.Count > 0 ? vm.Rows[^1].Balance : vm.OpeningBalance;
+
+            var report = new ReportTable
+            {
+                Title = "سجل الصندوق",
+                Subtitle = $"شهر {vm.Month}/{vm.Year}",
+                FileName = $"Ledger-{vm.Year}-{vm.Month:00}",
+                Headers = ["التاريخ", "النوع", "البيان", "الحساب", "داخل", "خارج", "الرصيد"],
+                ColumnWidths = [1.1f, 1, 3.5f, 1.3f, 1.2f, 1.2f, 1.3f],
+                Rows = vm.Rows.Select(r => new object?[]
+                {
+                    r.Date, r.Kind, r.IsPending ? $"{r.Description} (معلّق)" : r.Description, r.Account,
+                    r.In == 0 ? null : r.In, r.Out == 0 ? null : r.Out, r.Balance
+                }).ToList(),
+                Footer = [null, null, "الإجمالي", null, vm.Rows.Sum(r => r.In), vm.Rows.Sum(r => r.Out), closing],
+                Summary =
+                [
+                    ("رصيد أول الشهر", vm.OpeningBalance.ToString("N2")),
+                    ("رصيد آخر الشهر", closing.ToString("N2")),
+                    ("إيرادات لم تُستلم", vm.PendingIncome.ToString("N2"))
+                ]
+            };
+
+            var (content, type, name) = await export.ExportAsync(report, ExportService.ParseFormat(format));
+            return File(content, type, name);
+        }
+
+        private async Task<LedgerFilterVM> BuildAsync(int? year, int? month)
         {
             var now = DateTime.Now;
             int y = year ?? now.Year;
@@ -112,7 +147,7 @@ namespace DentalLab.Controllers
             vm.Rows = ordered;
             vm.PendingIncome = income.Where(e => !e.IsReceived).Sum(e => e.Amount);
 
-            return View(vm);
+            return vm;
         }
 
         /// <summary>رصيد بداية الشهر = أرصدة الحسابات الافتتاحية + كل حركة نقدية سابقة.</summary>

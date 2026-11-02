@@ -7,9 +7,22 @@
     <h4 class="fw-bold mb-0">الحالة @Model.CaseNumber — @Model.PatientName</h4>
     <div>
         <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">تعديل</a>
+        @if (User.IsInRole("Prog") || User.IsInRole("Admin"))
+        {
+            <a asp-controller="AuditLogs" asp-action="Index" asp-route-entityId="@Model.Id" class="btn btn-outline-info">سجل التغييرات</a>
+        }
         <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
     </div>
 </div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
 
 <div class="row g-3">
     <div class="col-md-5">
@@ -19,7 +32,28 @@
                 <tr><th>الطبيب</th><td>@Model.Doctor?.Name</td></tr>
                 <tr><th>المركز / العيادة</th><td>@Model.Clinic?.Name</td></tr>
                 <tr><th>تاريخ الاستلام</th><td>@Model.ReceivedDate?.ToString("yyyy/M/d")</td></tr>
-                <tr><th>تاريخ التسليم</th><td>@(Model.DeliveryDate?.ToString("yyyy/M/d") ?? "لم يُسلَّم")</td></tr>
+                <tr><th>موعد التسليم</th><td>@(Model.DeliveryDate?.ToString("yyyy/M/d") ?? "—")</td></tr>
+                <tr>
+                    <th>التسليم الفعلي</th>
+                    <td>
+                        <form asp-action="MarkDelivered" method="post" class="d-flex align-items-center gap-2">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="returnTo" value="details" />
+                            @if (Model.IsDelivered)
+                            {
+                                <span class="badge bg-success">سُلِّمت @Model.DeliveredAt?.ToString("yyyy/M/d HH:mm")</span>
+                                <input type="hidden" name="delivered" value="false" />
+                                <button class="btn btn-sm btn-outline-secondary">تراجع</button>
+                            }
+                            else if (Model.Status != CaseStatus.Cancelled)
+                            {
+                                <span class="badge @(Model.DeliveryDate?.Date < DateTime.Today ? "bg-danger" : "bg-warning text-dark")">لم تُسلَّم</span>
+                                <input type="hidden" name="delivered" value="true" />
+                                <button class="btn btn-sm btn-success">تم التسليم</button>
+                            }
+                        </form>
+                    </td>
+                </tr>
                 <tr><th>الشهر / السنة</th><td>@Model.Month / @Model.Year</td></tr>
                 <tr>
                     <th>الحالة</th>

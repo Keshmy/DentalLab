@@ -13,6 +13,8 @@
     </h4>
     <div>
         <a asp-action="Print" asp-route-id="@Model.Id" target="_blank" class="btn btn-dark">طباعة</a>
+        <a asp-action="Export" asp-route-id="@Model.Id" asp-route-format="pdf" class="btn btn-danger">تنزيل PDF</a>
+        <a asp-action="Export" asp-route-id="@Model.Id" asp-route-format="excel" class="btn btn-success">تنزيل Excel</a>
         <a asp-action="Index" asp-route-year="@Model.Year" asp-route-month="@Model.Month" class="btn btn-outline-secondary">رجوع</a>
     </div>
 </div>

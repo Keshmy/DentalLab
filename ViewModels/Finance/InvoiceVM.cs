@@ -74,27 +74,35 @@ namespace DentalLab.ViewModels.Finance
 
         public List<InvoicePreviewLine> Lines { get; set; } = [];
 
+        /// <summary>الأسطر التي ستدخل الفاتورة: تُستبعد الحالات المفوترة في فاتورة أخرى لمنع التفويتر المزدوج.</summary>
+        public IEnumerable<InvoicePreviewLine> BillableLines => Lines.Where(l => !l.AlreadyInvoiced);
+
         [Display(Name = "إجمالي الفاتورة")]
-        public decimal Total => Lines.Sum(l => l.LineTotal);
+        public decimal Total => BillableLines.Sum(l => l.LineTotal);
 
         [Display(Name = "عدد الوحدات")]
-        public int Units => Lines.Sum(l => l.Quantity);
+        public int Units => BillableLines.Sum(l => l.Quantity);
 
         [Display(Name = "تكلفة المواد")]
-        public decimal TotalCost => Lines.Sum(l => l.LineCost);
+        public decimal TotalCost => BillableLines.Sum(l => l.LineCost);
 
         [Display(Name = "الربح الإجمالي")]
         public decimal GrossProfit => Total - TotalCost;
 
         [Display(Name = "وحدات الإعادة")]
-        public int RemakeUnits => Lines.Where(l => l.IsRemake).Sum(l => l.Quantity);
+        public int RemakeUnits => BillableLines.Where(l => l.IsRemake).Sum(l => l.Quantity);
 
         [Display(Name = "إعادات مجانية")]
-        public decimal FreeRemakeCost => Lines.Where(l => l.IsRemake && l.UnitPrice == 0).Sum(l => l.LineCost);
+        public decimal FreeRemakeCost => BillableLines.Where(l => l.IsRemake && l.UnitPrice == 0).Sum(l => l.LineCost);
 
-        public int CaseCount => Lines.Select(l => l.LabCaseId).Distinct().Count();
+        public int CaseCount => BillableLines.Select(l => l.LabCaseId).Distinct().Count();
 
         public bool HasAlreadyInvoiced => Lines.Any(l => l.AlreadyInvoiced);
+
+        public bool HasBillableLines => BillableLines.Any();
+
+        /// <summary>مجموع الأسطر المستبعدة لأنها مفوترة سابقاً (للعرض فقط).</summary>
+        public decimal AlreadyInvoicedTotal => Lines.Where(l => l.AlreadyInvoiced).Sum(l => l.LineTotal);
 
         /// <summary>الفاتورة الصادرة لنفس (المركز/الطبيب/الشهر) إن وُجدت.</summary>
         public Invoice? ExistingInvoice { get; set; }

@@ -34,9 +34,16 @@ namespace DentalLab.Models.Entities
         [DataType(DataType.Date)]
         public DateTime? ReceivedDate { get; set; }
 
-        [Display(Name = "تاريخ التسليم")]
+        [Display(Name = "موعد التسليم")]
         [DataType(DataType.Date)]
         public DateTime? DeliveryDate { get; set; }
+
+        /// <summary>وقت التسليم الفعلي للطبيب (فارغ = لم تُسلَّم بعد).</summary>
+        [Display(Name = "سُلِّمت في")]
+        public DateTime? DeliveredAt { get; set; }
+
+        [NotMapped]
+        public bool IsDelivered => DeliveredAt.HasValue;
 
         [StringLength(100)]
         [Display(Name = "مكان الأسنان")]

@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="~/assets1/css/style.css">
     <link href="~/css/template.css" rel="stylesheet" />
     <link href="~/css/dashboard.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet" />
     <link href="~/css/site.css" rel="stylesheet" asp-append-version="true" />
     <style>
         body, .navbar, .sidebar, .main-panel { font-family: 'Cairo', sans-serif !important; }
@@ -101,6 +102,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a href="@Url.Action("Due", "LabCases")" class="nav-link">
+                            <span class="icon-bg"><i class="bi bi-truck menu-icon"></i></span>
+                            <span class="menu-title">مواعيد التسليم</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="@Url.Action("Index", "Ledger")" class="nav-link">
                             <span class="icon-bg"><i class="bi bi-book menu-icon"></i></span>
                             <span class="menu-title">سجل الصندوق</span>
@@ -161,6 +168,7 @@
                                     <li class="nav-item"><a href="@Url.Action("Index", "Loans")" class="nav-link">السلف</a></li>
                                     <li class="nav-item"><a href="@Url.Action("Index", "Accounts")" class="nav-link">الحسابات</a></li>
                                     <li class="nav-item"><a href="@Url.Action("Receivables", "Finance")" class="nav-link">ذمم المراكز</a></li>
+                                    <li class="nav-item"><a href="@Url.Action("Statement", "Finance")" class="nav-link">كشف حساب مركز</a></li>
                                     <li class="nav-item"><a href="@Url.Action("Index", "ClinicCredits")" class="nav-link">الرصيد الدائن</a></li>
                                     <li class="nav-item"><a href="@Url.Action("Remakes", "Finance")" class="nav-link">الإعادات</a></li>
                                 </ul>
@@ -190,6 +198,7 @@
                                 <ul class="nav flex-column sub-menu">
                                     <li class="nav-item"><a href="@Url.Action("SiteDetails", "Admin")" class="nav-link">بيانات المختبر</a></li>
                                     <li class="nav-item"><a href="@Url.Action("Backup", "Admin")" class="nav-link">النسخ الاحتياطي</a></li>
+                                    <li class="nav-item"><a href="@Url.Action("Index", "AuditLogs")" class="nav-link">سجل التغييرات</a></li>
                                     <li class="nav-item"><a href="@Url.Action("ImportArchive", "Admin")" class="nav-link">استيراد الأرشيف</a></li>
                                     <li class="nav-item"><a href="@Url.Action("ImportFinance", "Admin")" class="nav-link">استيراد الماليات</a></li>
                                 </ul>
@@ -226,6 +235,7 @@
     <script src="~/assets1/js/misc.js"></script>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
     <script src="~/js/dashboard-ui.js" asp-append-version="true"></script>
     <partial name="Partial/_toast" />
     @await RenderSectionAsync("Scripts", required: false)

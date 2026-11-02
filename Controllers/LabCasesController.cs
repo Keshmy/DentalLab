@@ -25,6 +25,110 @@ namespace DentalLab.Controllers
 
         public async Task<IActionResult> Index(int? year, int? month, Guid? doctorId, Guid? clinicId, string? status, string? search)
         {
+            var list = await FilterAsync(year, month, doctorId, clinicId, status, search);
+            await FillLookups(year, month, doctorId, clinicId, status);
+            ViewBag.Search = search;
+            return View(list);
+        }
+
+        /// <summary>مواعيد التسليم: المتأخرة، المستحقة اليوم، والقادمة خلال 7 أيام.</summary>
+        [HttpGet]
+        public async Task<IActionResult> Due()
+        {
+            var today = DateTime.Today;
+            var horizon = today.AddDays(8);
+
+            var pending = await _context.LabCases
+                .AsNoTracking()
+                .Include(c => c.Doctor)
+                .Include(c => c.Clinic)
+                .Include(c => c.Items).ThenInclude(i => i.ServiceType)
+                .Where(c => c.DeliveredAt == null
+                            && c.Status != CaseStatus.Cancelled
+                            && c.DeliveryDate != null
+                            && c.DeliveryDate < horizon)
+                .OrderBy(c => c.DeliveryDate)
+                .ThenBy(c => c.CaseNumber)
+                .ToListAsync();
+
+            var deliveredToday = await _context.LabCases
+                .AsNoTracking()
+                .Include(c => c.Doctor)
+                .Include(c => c.Clinic)
+                .Include(c => c.Items).ThenInclude(i => i.ServiceType)
+                .Where(c => c.DeliveredAt >= today && c.DeliveredAt < today.AddDays(1))
+                .OrderByDescending(c => c.DeliveredAt)
+                .ToListAsync();
+
+            var vm = new DeliveryDueVM
+            {
+                Today = today,
+                Overdue = pending.Where(c => c.DeliveryDate!.Value.Date < today).ToList(),
+                DueToday = pending.Where(c => c.DeliveryDate!.Value.Date == today).ToList(),
+                Upcoming = pending.Where(c => c.DeliveryDate!.Value.Date > today).ToList(),
+                DeliveredToday = deliveredToday,
+                WithoutDate = await _context.LabCases.CountAsync(c => c.DeliveredAt == null
+                                                                      && c.Status != CaseStatus.Cancelled
+                                                                      && c.DeliveryDate == null
+                                                                      && c.ReceivedDate >= today.AddDays(-30))
+            };
+
+            return View(vm);
+        }
+
+        /// <summary>تأشير الحالة كمُسلَّمة (أو إلغاء التأشير).</summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MarkDelivered(Guid id, bool delivered = true, string? returnTo = null)
+        {
+            var labCase = await _context.LabCases.FirstOrDefaultAsync(c => c.Id == id);
+            if (labCase == null)
+                return View("NotFound");
+
+            labCase.DeliveredAt = delivered ? DateTime.Now : null;
+            labCase.Modified = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = delivered
+                ? $"تم تسليم الحالة رقم {labCase.CaseNumber} — {labCase.PatientName}"
+                : $"أُلغي تأشير التسليم للحالة رقم {labCase.CaseNumber}";
+
+            return returnTo == "details"
+                ? RedirectToAction(nameof(Details), new { id })
+                : RedirectToAction(nameof(Due));
+        }
+
+        /// <summary>تصدير قائمة الحالات بنفس فلاتر الصفحة.</summary>
+        [HttpGet]
+        public async Task<IActionResult> Export(int? year, int? month, Guid? doctorId, Guid? clinicId, string? status, string? search,
+            string? format, [FromServices] ExportService export)
+        {
+            var list = await FilterAsync(year, month, doctorId, clinicId, status, search);
+            var billable = list.Where(c => c.IsBillable).ToList();
+
+            var report = new ReportTable
+            {
+                Title = "الحالات",
+                Subtitle = year.HasValue ? (month.HasValue ? $"شهر {month}/{year}" : $"سنة {year}") : "كل الفترات",
+                FileName = $"Cases-{DateTime.Now:yyyy-MM-dd}",
+                Headers = ["رقم", "اسم الحالة", "الطبيب", "المركز", "الأعمال", "الاستلام", "التسليم", "الحالة", "الوحدات", "الإجمالي", "مفوترة"],
+                ColumnWidths = [0.7f, 2, 1.6f, 1.6f, 3, 1.1f, 1.1f, 0.9f, 0.8f, 1.1f, 0.8f],
+                Rows = list.Select(c => new object?[]
+                {
+                    c.CaseNumber, c.PatientName, c.Doctor?.Name, c.Clinic?.Name,
+                    string.Join("، ", c.Items.Select(i => i.Quantity > 1 ? $"{i.DisplayName} ×{i.Quantity}" : i.DisplayName)),
+                    c.ReceivedDate, c.DeliveryDate, c.Status, c.Units, c.Total, c.IsInvoiced ? "نعم" : ""
+                }).ToList(),
+                Footer = [null, $"{list.Count} حالة", null, null, null, null, null, null, list.Sum(c => c.Units), billable.Sum(c => c.Total), null],
+                Note = "الإجمالي في السطر الأخير لا يشمل الحالات الملغاة."
+            };
+
+            var (content, type, name) = await export.ExportAsync(report, ExportService.ParseFormat(format));
+            return File(content, type, name);
+        }
+
+        private async Task<List<LabCase>> FilterAsync(int? year, int? month, Guid? doctorId, Guid? clinicId, string? status, string? search)
+        {
             var query = _context.LabCases
                 .AsNoTracking()
                 .Include(c => c.Doctor)
@@ -50,15 +154,11 @@ namespace DentalLab.Controllers
                                          || c.Items.Any(i => i.ServiceType != null && i.ServiceType.Name.Contains(search)));
             }
 
-            var list = await query
+            return await query
                 .OrderByDescending(c => c.Year)
                 .ThenByDescending(c => c.Month)
                 .ThenByDescending(c => c.CaseNumber)
                 .ToListAsync();
-
-            await FillLookups(year, month, doctorId, clinicId, status);
-            ViewBag.Search = search;
-            return View(list);
         }
 
         [HttpGet]
@@ -197,6 +297,14 @@ namespace DentalLab.Controllers
             var tooth = SummarizeTeeth(lines);
             var modified = DateTime.UtcNow;
 
+            // لقطة قبل التعديل لسجل التغييرات (التعديل هنا يتم بأوامر جماعية لا يراها ChangeTracker).
+            var before = await _context.LabCases
+                .AsNoTracking()
+                .Include(c => c.Doctor)
+                .Include(c => c.Clinic)
+                .Include(c => c.Items).ThenInclude(i => i.ServiceType)
+                .FirstAsync(c => c.Id == id);
+
             await using var tx = await _context.Database.BeginTransactionAsync();
 
             var updated = await _context.LabCases
@@ -246,6 +354,8 @@ namespace DentalLab.Controllers
 
             var creditCreated = await TryCreateClinicCreditAsync(shell, model);
 
+            await AddEditAuditAsync(before, model, shell.Items);
+
             await _context.SaveChangesAsync();
             await tx.CommitAsync();
 
@@ -291,6 +401,48 @@ namespace DentalLab.Controllers
             await _context.SaveChangesAsync();
             TempData["SuccessMessage"] = "تم حذف الحالة";
             return RedirectToAction(nameof(Index));
+        }
+
+        /// <summary>اقتراحات أسماء الحالات (المرضى) السابقة لحقل الاسم في نموذج الحالة.</summary>
+        [HttpGet]
+        public async Task<JsonResult> PatientNames(string? q)
+        {
+            if (string.IsNullOrWhiteSpace(q))
+                return Json(Array.Empty<string>());
+
+            // المقارنة في الذاكرة بعد توحيد الحروف العربية (أ/إ/آ، ة/ه، ى/ي) — عدد الأسماء صغير.
+            var names = await _context.LabCases
+                .AsNoTracking()
+                .Select(c => c.PatientName)
+                .Distinct()
+                .ToListAsync();
+
+            var term = NormalizeArabic(q);
+            var matches = names
+                .Where(n => !string.IsNullOrWhiteSpace(n) && NormalizeArabic(n).Contains(term))
+                .OrderBy(n => NormalizeArabic(n).StartsWith(term) ? 0 : 1)
+                .ThenBy(n => n)
+                .Take(20)
+                .ToList();
+
+            return Json(matches);
+        }
+
+        private static string NormalizeArabic(string s)
+        {
+            var sb = new System.Text.StringBuilder(s.Length);
+            foreach (var ch in s.Trim().ToLowerInvariant())
+            {
+                if (ch is >= 'ً' and <= 'ْ' or 'ـ') continue; // تشكيل وتطويل
+                sb.Append(ch switch
+                {
+                    'أ' or 'إ' or 'آ' or 'ٱ' => 'ا',
+                    'ة' => 'ه',
+                    'ى' => 'ي',
+                    _ => ch
+                });
+            }
+            return sb.ToString();
         }
 
         /// <summary>سعر نوع العمل لهذا الطبيب/العيادة + التكلفة.</summary>
@@ -521,6 +673,60 @@ namespace DentalLab.Controllers
             });
 
             return true;
+        }
+
+        /// <summary>يسجّل في سجل التغييرات ما تغيّر في رأس الحالة وأسطرها.</summary>
+        private async Task AddEditAuditAsync(LabCase before, LabCaseFormVM model, ICollection<LabCaseItem> newItems)
+        {
+            var changes = new List<string>();
+
+            void Diff(string label, object? oldValue, object? newValue)
+            {
+                if (!Equals(oldValue, newValue))
+                    changes.Add($"{label}: {AuditTrail.Format(oldValue)} ← {AuditTrail.Format(newValue)}");
+            }
+
+            async Task<string?> DoctorName(Guid? id) => id == null ? null
+                : await _context.Doctors.AsNoTracking().Where(d => d.Id == id).Select(d => d.Name).FirstOrDefaultAsync();
+            async Task<string?> ClinicName(Guid? id) => id == null ? null
+                : await _context.Clinics.AsNoTracking().Where(c => c.Id == id).Select(c => c.Name).FirstOrDefaultAsync();
+
+            Diff("رقم الحالة", before.CaseNumber, model.CaseNumber);
+            Diff("اسم الحالة", before.PatientName, model.PatientName);
+            if (before.DoctorId != model.DoctorId)
+                Diff("الطبيب", before.Doctor?.Name, await DoctorName(model.DoctorId));
+            if (before.ClinicId != model.ClinicId)
+                Diff("المركز / العيادة", before.Clinic?.Name, await ClinicName(model.ClinicId));
+            Diff("تاريخ الاستلام", before.ReceivedDate, model.ReceivedDate);
+            Diff("تاريخ التسليم", before.DeliveryDate, model.DeliveryDate);
+            Diff("الحالة", before.Status, model.Status);
+            Diff("ملاحظات", string.IsNullOrWhiteSpace(before.Notes) ? null : before.Notes,
+                             string.IsNullOrWhiteSpace(model.Notes) ? null : model.Notes);
+
+            var oldItems = AuditTrail.DescribeItems(before.Items.OrderBy(i => i.IsRemake).ThenBy(i => i.Created));
+            var newItemsText = AuditTrail.DescribeItems(newItems);
+            if (oldItems != newItemsText)
+            {
+                changes.Add($"الأسطر قبل: {oldItems}");
+                changes.Add($"الأسطر بعد: {newItemsText}");
+                changes.Add($"الإجمالي: {before.Total:N2} ← {newItems.Sum(i => i.LineTotal):N2}");
+            }
+
+            if (changes.Count == 0)
+                return;
+
+            _context.AuditLogs.Add(new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                Timestamp = DateTime.UtcNow,
+                UserName = _context.CurrentUserName,
+                Action = AuditAction.Modified,
+                EntityType = nameof(LabCase),
+                EntityLabel = AuditTrail.LabelFor(nameof(LabCase)),
+                EntityId = before.Id.ToString(),
+                Summary = $"حالة رقم {model.CaseNumber} — {model.PatientName}",
+                Changes = string.Join("\n", changes)
+            });
         }
 
         /// <summary>يصلح قيم العدد الفارغة قبل التحقق حتى لا يفشل التعديل بعد الحفظ.</summary>

@@ -27,6 +27,7 @@ namespace DentalLab.Services
 
         public async Task<ImportResultVM> ImportAsync(string? filePath = null)
         {
+            _context.AuditEnabled = false; // الاستيراد الجماعي لا يُسجَّل سطراً سطراً في سجل التغييرات
             var result = new ImportResultVM();
             filePath ??= Path.Combine(_host.ContentRootPath, "Data", "Archive.xlsx");
 
@@ -59,6 +60,7 @@ namespace DentalLab.Services
         /// </summary>
         public async Task<ImportResultVM> ImportFinanceAsync(string? filePath = null)
         {
+            _context.AuditEnabled = false; // الاستيراد الجماعي لا يُسجَّل سطراً سطراً في سجل التغييرات
             var result = new ImportResultVM();
             filePath ??= Path.Combine(_host.ContentRootPath, "Data", "Finance.xlsx");
 
@@ -260,6 +262,7 @@ namespace DentalLab.Services
 
                 var item = new LabCaseItem
                 {
+                    Id = Guid.NewGuid(), // LabCaseItem.Id لا يُولَّد تلقائياً (ValueGeneratedNever)
                     ServiceTypeId = serviceId,
                     ProductName = workType?.Trim(),
                     Quantity = qty,
@@ -287,6 +290,7 @@ namespace DentalLab.Services
 
                 var labCase = new LabCase
                 {
+                    Id = Guid.NewGuid(), // LabCase.Id لا يُولَّد تلقائياً (ValueGeneratedNever)
                     CaseNumber = caseNumber,
                     PatientName = string.IsNullOrWhiteSpace(patientName) ? ("حالة " + (caseNumber?.ToString() ?? r.ToString())) : patientName.Trim(),
                     DoctorId = doctorId,

@@ -6,7 +6,11 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h3 class="fw-bold">الحالات</h3>
-    <a asp-action="Create" class="btn btn-primary">حالة جديدة</a>
+    <div class="d-flex gap-2">
+        <a asp-action="Due" class="btn btn-outline-warning">مواعيد التسليم</a>
+        <partial name="Partial/_exportButtons" model="@("Export")" />
+        <a asp-action="Create" class="btn btn-primary">حالة جديدة</a>
+    </div>
 </div>
 
 <form method="get" class="row g-2 mb-3">

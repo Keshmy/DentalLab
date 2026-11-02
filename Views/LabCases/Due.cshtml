@@ -1,0 +1,165 @@
+@model DentalLab.ViewModels.DeliveryDueVM
+@{
+    ViewData["Title"] = "مواعيد التسليم";
+}
+
+@functions {
+    string DaysLabel(DateTime due, DateTime today)
+    {
+        var d = (due.Date - today).Days;
+        return d switch
+        {
+            0 => "اليوم",
+            1 => "غداً",
+            -1 => "متأخرة يوم",
+            < 0 => $"متأخرة {-d} يوم",
+            _ => $"بعد {d} أيام"
+        };
+    }
+}
+
+@{
+    async Task CaseTable(List<LabCase> cases, string rowClass, bool delivered)
+    {
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>رقم</th>
+                        <th>اسم الحالة</th>
+                        <th>الطبيب</th>
+                        <th>المركز</th>
+                        <th>الأعمال</th>
+                        <th>@(delivered ? "سُلِّمت" : "موعد التسليم")</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in cases)
+                    {
+                        <tr class="@rowClass">
+                            <td><a asp-action="Details" asp-route-id="@c.Id">@c.CaseNumber</a></td>
+                            <td>@c.PatientName</td>
+                            <td>@c.Doctor?.Name</td>
+                            <td>@c.Clinic?.Name</td>
+                            <td class="small">@string.Join("، ", c.Items.Select(i => i.Quantity > 1 ? $"{i.DisplayName} ×{i.Quantity}" : i.DisplayName))</td>
+                            <td class="text-nowrap">
+                                @if (delivered)
+                                {
+                                    @c.DeliveredAt?.ToString("HH:mm")
+                                }
+                                else
+                                {
+                                    @c.DeliveryDate?.ToString("dd/MM/yyyy")
+                                    <div class="small fw-bold">@DaysLabel(c.DeliveryDate!.Value, Model.Today)</div>
+                                }
+                            </td>
+                            <td class="text-nowrap">
+                                <form asp-action="MarkDelivered" method="post" class="d-inline">
+                                    <input type="hidden" name="id" value="@c.Id" />
+                                    <input type="hidden" name="delivered" value="@(delivered ? "false" : "true")" />
+                                    @if (delivered)
+                                    {
+                                        <button class="btn btn-sm btn-outline-secondary">تراجع</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-success">تم التسليم</button>
+                                    }
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">مواعيد التسليم — @Model.Today.ToString("dd/MM/yyyy")</h3>
+    <a asp-action="Index" class="btn btn-outline-secondary">كل الحالات</a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="card border-danger"><div class="card-body py-2">
+            <div class="small text-muted">متأخرة</div>
+            <div class="fs-4 fw-bold text-danger">@Model.Overdue.Count</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-warning"><div class="card-body py-2">
+            <div class="small text-muted">مستحقة اليوم</div>
+            <div class="fs-4 fw-bold text-warning">@Model.DueToday.Count</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="small text-muted">خلال 7 أيام</div>
+            <div class="fs-4 fw-bold">@Model.Upcoming.Count</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-success"><div class="card-body py-2">
+            <div class="small text-muted">سُلِّمت اليوم</div>
+            <div class="fs-4 fw-bold text-success">@Model.DeliveredToday.Count</div>
+        </div></div>
+    </div>
+</div>
+
+@if (Model.WithoutDate > 0)
+{
+    <div class="alert alert-light border small">
+        يوجد <strong>@Model.WithoutDate</strong> حالة حديثة بدون موعد تسليم — لن تظهر هنا حتى يُحدَّد لها تاريخ تسليم.
+    </div>
+}
+
+<div class="card mb-3">
+    <div class="card-header bg-danger text-white fw-bold">متأخرة (@Model.Overdue.Count)</div>
+    @if (Model.Overdue.Count == 0)
+    {
+        <div class="card-body text-muted">لا توجد حالات متأخرة.</div>
+    }
+    else
+    {
+        await CaseTable(Model.Overdue, "table-danger", false);
+    }
+</div>
+
+<div class="card mb-3">
+    <div class="card-header bg-warning fw-bold">مستحقة اليوم (@Model.DueToday.Count)</div>
+    @if (Model.DueToday.Count == 0)
+    {
+        <div class="card-body text-muted">لا توجد حالات مستحقة اليوم.</div>
+    }
+    else
+    {
+        await CaseTable(Model.DueToday, "", false);
+    }
+</div>
+
+<div class="card mb-3">
+    <div class="card-header fw-bold">القادمة خلال 7 أيام (@Model.Upcoming.Count)</div>
+    @if (Model.Upcoming.Count == 0)
+    {
+        <div class="card-body text-muted">لا توجد حالات قادمة.</div>
+    }
+    else
+    {
+        await CaseTable(Model.Upcoming, "", false);
+    }
+</div>
+
+@if (Model.DeliveredToday.Count > 0)
+{
+    <div class="card mb-3">
+        <div class="card-header bg-success text-white fw-bold">سُلِّمت اليوم (@Model.DeliveredToday.Count)</div>
+        @{ await CaseTable(Model.DeliveredToday, "", true); }
+    </div>
+}

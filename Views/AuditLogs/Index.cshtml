@@ -1,0 +1,137 @@
+@model List<AuditLog>
+@{
+    ViewData["Title"] = "سجل التغييرات";
+    int currentPage = ViewBag.Page;
+    int totalPages = ViewBag.TotalPages;
+
+    string PageUrl(int p)
+    {
+        var q = ViewContext.HttpContext.Request.Query
+            .Where(kv => kv.Key != "page")
+            .Select(kv => $"{kv.Key}={Uri.EscapeDataString(kv.Value.ToString())}")
+            .Append($"page={p}");
+        return Url.Action("Index") + "?" + string.Join("&", q);
+    }
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">سجل التغييرات</h3>
+    <div class="d-flex gap-2">
+        <partial name="Partial/_exportButtons" model="@("Export")" />
+    </div>
+</div>
+
+<div class="alert alert-light border small">
+    يُسجَّل تلقائياً كل إضافة أو تعديل أو حذف على: الأسعار (العامة والخاصة)، الحالات، الفواتير، التحصيلات، المصاريف، الرصيد الدائن، والعيادات والأطباء.
+    السجل للعرض فقط ولا يمكن تعديله.
+</div>
+
+<form method="get" class="row g-2 mb-3 align-items-end">
+    @if (!string.IsNullOrEmpty((string?)ViewBag.EntityId))
+    {
+        <input type="hidden" name="entityId" value="@ViewBag.EntityId" />
+    }
+    <div class="col-md-2">
+        <label class="form-label small">من</label>
+        <input type="date" name="from" class="form-control" value="@(((DateTime?)ViewBag.From)?.ToString("yyyy-MM-dd"))" />
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small">إلى</label>
+        <input type="date" name="to" class="form-control" value="@(((DateTime?)ViewBag.To)?.ToString("yyyy-MM-dd"))" />
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small">المستخدم</label>
+        <select name="user" class="form-select" asp-items="ViewBag.Users">
+            <option value="">الكل</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small">النوع</label>
+        <select name="entityType" class="form-select" asp-items="ViewBag.Types">
+            <option value="">الكل</option>
+        </select>
+    </div>
+    <div class="col-md-1">
+        <label class="form-label small">العملية</label>
+        <select name="op" class="form-select" asp-items="ViewBag.Actions">
+            <option value="">الكل</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small">بحث</label>
+        <input name="search" class="form-control" value="@ViewBag.Search" placeholder="اسم، رقم حالة، مبلغ..." />
+    </div>
+    <div class="col-md-1">
+        <button class="btn btn-primary w-100">عرض</button>
+    </div>
+</form>
+
+@if (!string.IsNullOrEmpty((string?)ViewBag.EntityId))
+{
+    <div class="alert alert-info py-2 d-flex justify-content-between align-items-center">
+        <span>تعرض سجل عنصر واحد فقط.</span>
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">عرض الكل</a>
+    </div>
+}
+
+<div class="text-muted small mb-2">@ViewBag.Total سجل</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-bordered table-sm align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width:130px">الوقت</th>
+                    <th>المستخدم</th>
+                    <th>العملية</th>
+                    <th>النوع</th>
+                    <th>السجل</th>
+                    <th>التغييرات</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in Model)
+                {
+                    <tr>
+                        <td class="small text-nowrap">@a.Timestamp.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                        <td class="small">@(a.UserName ?? "النظام")</td>
+                        <td>
+                            <span class="badge @(a.Action == AuditAction.Added ? "bg-success" : a.Action == AuditAction.Deleted ? "bg-danger" : "bg-primary")">@a.Action</span>
+                        </td>
+                        <td class="small">@a.EntityLabel</td>
+                        <td>
+                            @if (a.EntityType == nameof(LabCase) && a.Action != AuditAction.Deleted && Guid.TryParse(a.EntityId, out var caseId))
+                            {
+                                <a asp-controller="LabCases" asp-action="Details" asp-route-id="@caseId">@a.Summary</a>
+                            }
+                            else if (a.EntityType == nameof(Invoice) && a.Action != AuditAction.Deleted && Guid.TryParse(a.EntityId, out var invoiceId))
+                            {
+                                <a asp-controller="Invoices" asp-action="Details" asp-route-id="@invoiceId">@a.Summary</a>
+                            }
+                            else
+                            {
+                                @a.Summary
+                            }
+                        </td>
+                        <td class="small" style="white-space: pre-line">@a.Changes</td>
+                    </tr>
+                }
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center text-muted">لا توجد سجلات.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (totalPages > 1)
+{
+    <nav class="mt-3">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(currentPage <= 1 ? "disabled" : "")"><a class="page-link" href="@PageUrl(currentPage - 1)">السابق</a></li>
+            <li class="page-item disabled"><span class="page-link">صفحة @currentPage من @totalPages</span></li>
+            <li class="page-item @(currentPage >= totalPages ? "disabled" : "")"><a class="page-link" href="@PageUrl(currentPage + 1)">التالي</a></li>
+        </ul>
+    </nav>
+}

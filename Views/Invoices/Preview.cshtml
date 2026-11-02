@@ -45,9 +45,10 @@
 @if (Model.HasAlreadyInvoiced)
 {
     <div class="alert alert-warning">
-        بعض الحالات في هذه المعاينة مُفوترة في فاتورة أخرى (مثلاً فاتورة طبيب منفصلة).
-        إصدار فاتورة جديدة سيتركها مرتبطة بفاتورتها الأصلية — راجع الأسطر المعلَّمة أدناه
-        حتى لا تُطالِب المركز بالمبلغ مرتين.
+        بعض الحالات في هذه المعاينة مُفوترة في فاتورة أخرى (مثلاً فاتورة طبيب منفصلة)
+        بمبلغ <strong>@Model.AlreadyInvoicedTotal.ToString("N2")</strong>.
+        هذه الأسطر <strong>مستبعدة</strong> من إجمالي هذه الفاتورة ولن تُضاف إليها عند الإصدار،
+        حتى لا يُطالَب المركز بالمبلغ مرتين.
     </div>
 }
 
@@ -76,13 +77,13 @@ else
                     <tbody>
                         <tr class="table-secondary">
                             <th colspan="4">@group.Key</th>
-                            <th>@group.Sum(l => l.Quantity)</th>
+                            <th>@group.Where(l => !l.AlreadyInvoiced).Sum(l => l.Quantity)</th>
                             <th></th>
-                            <th>@group.Sum(l => l.LineTotal).ToString("N2")</th>
+                            <th>@group.Where(l => !l.AlreadyInvoiced).Sum(l => l.LineTotal).ToString("N2")</th>
                         </tr>
                         @foreach (var line in group)
                         {
-                            <tr class="@(line.IsRemake ? "table-warning" : "")">
+                            <tr class="@(line.AlreadyInvoiced ? "text-muted text-decoration-line-through" : line.IsRemake ? "table-warning" : "")">
                                 <td>@line.CaseNumber</td>
                                 <td>@line.PatientName</td>
                                 <td>@line.DoctorName</td>
@@ -133,7 +134,11 @@ else
         </div>
     </div>
 
-    @if (Model.ExistingInvoice == null)
+    @if (Model.ExistingInvoice == null && !Model.HasBillableLines)
+    {
+        <div class="alert alert-secondary">كل الحالات في هذه الفترة مُفوترة مسبقاً — لا يوجد ما يُفوتر.</div>
+    }
+    else if (Model.ExistingInvoice == null)
     {
         <form asp-action="Issue" method="post" class="card">
             <div class="card-body row g-2 align-items-end">

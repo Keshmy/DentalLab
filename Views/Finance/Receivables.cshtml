@@ -9,6 +9,8 @@
     <div class="d-flex gap-2">
         <a asp-controller="ClinicCredits" asp-action="Index" class="btn btn-outline-primary">الرصيد الدائن</a>
         <a asp-action="Index" class="btn btn-outline-secondary">الأرباح والخسائر</a>
+        <a asp-action="ExportReceivables" asp-route-format="pdf" class="btn btn-danger">PDF</a>
+        <a asp-action="ExportReceivables" asp-route-format="excel" class="btn btn-success">Excel</a>
     </div>
 </div>
 
@@ -61,7 +63,16 @@
         @foreach (var r in Model)
         {
             <tr>
-                <td>@r.ClinicName</td>
+                <td>
+                    @if (r.ClinicId.HasValue)
+                    {
+                        <a asp-action="Statement" asp-route-clinicId="@r.ClinicId" title="كشف حساب">@r.ClinicName</a>
+                    }
+                    else
+                    {
+                        @r.ClinicName
+                    }
+                </td>
                 <td>@r.CaseCount</td>
                 <td>@r.Units</td>
                 <td>@r.OpeningBalance.ToString("N2")</td>

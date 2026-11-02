@@ -17,6 +17,14 @@ builder.Services.AddScoped<PricingService>();
 builder.Services.AddScoped<FinanceService>();
 builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<BackupService>();
+builder.Services.AddScoped<ExportService>();
+builder.Services.AddScoped<StatementService>();
+
+// QuestPDF: الرخصة المجانية (Community) تكفي للمنشآت التي يقل دخلها السنوي عن مليون دولار.
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+// خطوط PDF العربية (Tahoma/Arial) موجودة على أي خادم Windows. لتثبيت خط معيّن بدلاً منها،
+// ضع ملف .ttf بجانب التطبيق (يُكتشف تلقائياً) واذكر اسمه في ExportService.PdfFont.
+QuestPDF.Settings.UseSystemFonts = true;
 builder.Services.AddHostedService<AutoBackupHostedService>();
 
 builder.Services.AddDbContext<AppDbContext>(x =>

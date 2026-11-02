@@ -7,7 +7,11 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h3 class="fw-bold mb-0">سجل الصندوق — @monthNames[Model.Month - 1] @Model.Year</h3>
-    <a asp-controller="Finance" asp-action="Index" class="btn btn-outline-primary">الأرباح والخسائر</a>
+    <div class="d-flex gap-2">
+        <a asp-controller="Finance" asp-action="Index" class="btn btn-outline-primary">الأرباح والخسائر</a>
+        <a asp-action="Export" asp-route-year="@Model.Year" asp-route-month="@Model.Month" asp-route-format="pdf" class="btn btn-danger">PDF</a>
+        <a asp-action="Export" asp-route-year="@Model.Year" asp-route-month="@Model.Month" asp-route-format="excel" class="btn btn-success">Excel</a>
+    </div>
 </div>
 
 <form method="get" class="row g-2 mb-3">

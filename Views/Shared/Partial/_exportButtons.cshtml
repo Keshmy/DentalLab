@@ -1,0 +1,9 @@
+@* أزرار التصدير: تنقل فلاتر الصفحة الحالية (query string) إلى إجراء Export. الموديل = اسم الإجراء (افتراضياً Export). *@
+@model string?
+@{
+    var action = string.IsNullOrWhiteSpace(Model) ? "Export" : Model;
+    var qs = Context.Request.QueryString.HasValue ? Context.Request.QueryString.Value + "&" : "?";
+    var baseUrl = Url.Action(action) + qs;
+}
+<a href="@(baseUrl)format=pdf" class="btn btn-danger">PDF</a>
+<a href="@(baseUrl)format=excel" class="btn btn-success">Excel</a>

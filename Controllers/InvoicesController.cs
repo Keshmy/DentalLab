@@ -72,7 +72,7 @@ namespace DentalLab.Controllers
 
             if (invoice == null)
             {
-                TempData["ErrorMessage"] = "لا توجد أعمال في هذه الفترة — لم تُصدر أي فاتورة.";
+                TempData["ErrorMessage"] = "لا توجد أعمال غير مفوترة في هذه الفترة — لم تُصدر أي فاتورة.";
                 return RedirectToAction(nameof(Index), new { year, month });
             }
 
@@ -126,6 +126,75 @@ namespace DentalLab.Controllers
 
             ViewBag.Site = await _context.SiteInfo.AsNoTracking().FirstOrDefaultAsync();
             return View(invoice);
+        }
+
+        /// <summary>تصدير الفاتورة إلى PDF أو Excel.</summary>
+        [HttpGet]
+        public async Task<IActionResult> Export(Guid? id, string? format, [FromServices] ExportService export)
+        {
+            if (id == null)
+                return View("NotFound");
+
+            var invoice = await _context.Invoices
+                .AsNoTracking()
+                .Include(i => i.Clinic)
+                .Include(i => i.Doctor)
+                .Include(i => i.Lines)
+                .Include(i => i.Payments)
+                .FirstOrDefaultAsync(i => i.Id == id);
+
+            if (invoice == null)
+                return View("NotFound");
+
+            var site = await _context.SiteInfo.AsNoTracking().FirstOrDefaultAsync();
+
+            var report = new ReportTable
+            {
+                Title = $"فاتورة رقم {invoice.Number}",
+                Subtitle = $"عن شهر {invoice.Month}/{invoice.Year}",
+                FileName = $"Invoice-{invoice.Number}",
+                Info =
+                [
+                    ("المركز / العيادة", invoice.Clinic?.Name ?? "بدون مركز"),
+                    ("الطبيب", invoice.Doctor?.Name ?? "كل الأطباء"),
+                    ("من تاريخ", invoice.FromDate.ToString("dd/MM/yyyy")),
+                    ("إلى تاريخ", invoice.ToDate.ToString("dd/MM/yyyy")),
+                    ("تاريخ الإصدار", invoice.IssueDate.ToString("dd/MM/yyyy")),
+                    ("الحالة", invoice.Status)
+                ],
+                Headers = ["رقم الحالة", "اسم الحالة", "الطبيب", "المنتج", "العدد", "السعر", "الإجمالي"],
+                ColumnWidths = [1, 2.2f, 2, 2.4f, 0.8f, 1.2f, 1.4f],
+                Rows = invoice.Lines
+                    .OrderBy(l => l.DoctorName)
+                    .ThenBy(l => l.CaseNumber)
+                    .Select(l => new object?[]
+                    {
+                        l.CaseNumber,
+                        l.PatientName,
+                        l.DoctorName,
+                        l.IsRemake ? $"{l.ProductName} (إعادة)" : l.ProductName,
+                        l.Quantity,
+                        l.UnitPrice,
+                        l.LineTotal
+                    }).ToList(),
+                Footer = [null, null, null, "الإجمالي", invoice.TotalUnits, null, invoice.TotalAmount],
+                Summary =
+                [
+                    ("إجمالي الفاتورة", invoice.TotalAmount.ToString("N2")),
+                    ("المسدد", invoice.PaidAmount.ToString("N2")),
+                    ("المتبقي", invoice.Outstanding.ToString("N2"))
+                ],
+                Note = string.Join("\n", new[]
+                {
+                    invoice.Notes,
+                    string.IsNullOrWhiteSpace(site?.BankAccountNumber)
+                        ? null
+                        : $"الحساب المصرفي: {site.BankAccountName} — {site.BankName} — {site.BankAccountNumber}"
+                }.Where(s => !string.IsNullOrWhiteSpace(s)))
+            };
+
+            var (content, type, name) = await export.ExportAsync(report, ExportService.ParseFormat(format));
+            return File(content, type, name);
         }
 
         /// <summary>تسجيل تحصيل على الفاتورة — يُنشئ سطر إيراد مرتبطاً بها.</summary>

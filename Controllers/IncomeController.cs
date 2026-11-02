@@ -30,6 +30,44 @@ namespace DentalLab.Controllers
 
         public async Task<IActionResult> Index(int? year, int? month, Guid? clinicId, bool? pendingOnly)
         {
+            var list = await FilterAsync(year, month, clinicId, pendingOnly);
+            await FillFilters(year, month, clinicId, pendingOnly);
+            return View(list);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Export(int? year, int? month, Guid? clinicId, bool? pendingOnly, string? format,
+            [FromServices] ExportService export)
+        {
+            var list = await FilterAsync(year, month, clinicId, pendingOnly);
+            var received = list.Where(e => e.IsReceived).Sum(e => e.Amount);
+
+            var report = new ReportTable
+            {
+                Title = "الإيرادات والتحصيلات",
+                Subtitle = year.HasValue ? (month.HasValue ? $"شهر {month}/{year}" : $"سنة {year}") : "كل الفترات",
+                FileName = $"Income-{DateTime.Now:yyyy-MM-dd}",
+                Headers = ["التاريخ", "البيان", "المركز", "الفاتورة", "الحساب", "الطريقة", "المبلغ", "مستلم"],
+                ColumnWidths = [1.1f, 3, 2, 0.9f, 1.3f, 1, 1.2f, 0.8f],
+                Rows = list.Select(e => new object?[]
+                {
+                    e.Date, e.Description, e.Clinic?.Name, e.Invoice?.Number, e.FinancialAccount?.Name, e.Method, e.Amount,
+                    e.IsReceived ? "نعم" : "لا"
+                }).ToList(),
+                Footer = [null, "الإجمالي", null, null, null, null, list.Sum(e => e.Amount), null],
+                Summary =
+                [
+                    ("المستلم", received.ToString("N2")),
+                    ("لم يُستلم", (list.Sum(e => e.Amount) - received).ToString("N2"))
+                ]
+            };
+
+            var (content, type, name) = await export.ExportAsync(report, ExportService.ParseFormat(format));
+            return File(content, type, name);
+        }
+
+        private async Task<List<IncomeEntry>> FilterAsync(int? year, int? month, Guid? clinicId, bool? pendingOnly)
+        {
             var query = _context.IncomeEntries
                 .AsNoTracking()
                 .Include(e => e.Clinic)
@@ -46,14 +84,11 @@ namespace DentalLab.Controllers
             if (pendingOnly == true)
                 query = query.Where(e => !e.IsReceived);
 
-            var list = await query
+            return await query
                 .OrderByDescending(e => e.Year)
                 .ThenByDescending(e => e.Month)
                 .ThenByDescending(e => e.Date)
                 .ToListAsync();
-
-            await FillFilters(year, month, clinicId, pendingOnly);
-            return View(list);
         }
 
         [HttpGet]

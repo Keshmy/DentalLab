@@ -11,6 +11,8 @@
         <a asp-action="Receivables" class="btn btn-outline-primary">الذمم</a>
         <a asp-action="Remakes" asp-route-year="@Model.Year" class="btn btn-outline-warning">الإعادات</a>
         <a asp-controller="Ledger" asp-action="Index" class="btn btn-outline-secondary">سجل الصندوق</a>
+        <a asp-action="ExportSummary" asp-route-year="@Model.Year" asp-route-month="@Model.Month" asp-route-format="pdf" class="btn btn-danger">PDF</a>
+        <a asp-action="ExportSummary" asp-route-year="@Model.Year" asp-route-month="@Model.Month" asp-route-format="excel" class="btn btn-success">Excel</a>
     </div>
 </div>
 

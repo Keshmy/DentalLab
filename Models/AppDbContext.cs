@@ -7,8 +7,37 @@ namespace DentalLab.Models
 {
     public class AppDbContext : IdentityDbContext<ApplicationUser>
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+        private readonly IHttpContextAccessor? _http;
+
+        public AppDbContext(DbContextOptions<AppDbContext> options, IHttpContextAccessor? http = null) : base(options)
         {
+            _http = http;
+        }
+
+        /// <summary>اسم المستخدم الحالي لسجل التغييرات (فارغ في المهام الخلفية).</summary>
+        public string? CurrentUserName => _http?.HttpContext?.User?.Identity?.Name;
+
+        /// <summary>يُطفأ أثناء الاستيراد الجماعي حتى لا يمتلئ سجل التغييرات بآلاف السطور.</summary>
+        public bool AuditEnabled { get; set; } = true;
+
+        public override int SaveChanges(bool acceptAllChangesOnSuccess)
+        {
+            if (AuditEnabled)
+                AddAuditLogs(AuditTrail.CollectAsync(this, CurrentUserName).GetAwaiter().GetResult());
+            return base.SaveChanges(acceptAllChangesOnSuccess);
+        }
+
+        public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+        {
+            if (AuditEnabled)
+                AddAuditLogs(await AuditTrail.CollectAsync(this, CurrentUserName, cancellationToken));
+            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+
+        private void AddAuditLogs(List<AuditLog> logs)
+        {
+            if (AuditEnabled && logs.Count > 0)
+                AuditLogs.AddRange(logs);
         }
 
         public DbSet<SiteInfo> SiteInfo { get; set; }
@@ -30,6 +59,7 @@ namespace DentalLab.Models
         public DbSet<LoanTransaction> LoanTransactions { get; set; }
         public DbSet<BackupSettings> BackupSettings { get; set; }
         public DbSet<ClinicCreditEntry> ClinicCreditEntries { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -232,6 +262,11 @@ namespace DentalLab.Models
             modelBuilder.Entity<IncomeEntry>().HasIndex(e => new { e.Year, e.Month });
             modelBuilder.Entity<LoanTransaction>().HasIndex(e => new { e.Year, e.Month });
             modelBuilder.Entity<ClinicCreditEntry>().HasIndex(e => e.ClinicId);
+
+            modelBuilder.Entity<AuditLog>().Property(x => x.Id).ValueGeneratedNever();
+            modelBuilder.Entity<AuditLog>().HasIndex(a => a.Timestamp);
+            modelBuilder.Entity<AuditLog>().HasIndex(a => new { a.EntityType, a.EntityId });
+            modelBuilder.Entity<LabCase>().HasIndex(c => new { c.DeliveryDate, c.DeliveredAt });
 
             modelBuilder.Seed();
         }

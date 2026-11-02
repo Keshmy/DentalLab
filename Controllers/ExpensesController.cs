@@ -31,6 +31,44 @@ namespace DentalLab.Controllers
 
         public async Task<IActionResult> Index(int? year, int? month, Guid? categoryId, bool? unpaidOnly)
         {
+            var list = await FilterAsync(year, month, categoryId, unpaidOnly);
+            await FillFilters(year, month, categoryId, unpaidOnly);
+            return View(list);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Export(int? year, int? month, Guid? categoryId, bool? unpaidOnly, string? format,
+            [FromServices] ExportService export)
+        {
+            var list = await FilterAsync(year, month, categoryId, unpaidOnly);
+            var paid = list.Where(e => e.IsPaid).Sum(e => e.Amount);
+
+            var report = new ReportTable
+            {
+                Title = "المصاريف",
+                Subtitle = year.HasValue ? (month.HasValue ? $"شهر {month}/{year}" : $"سنة {year}") : "كل الفترات",
+                FileName = $"Expenses-{DateTime.Now:yyyy-MM-dd}",
+                Headers = ["التاريخ", "البيان", "التصنيف", "الحساب", "المبلغ", "مدفوع", "ملاحظات"],
+                ColumnWidths = [1.1f, 3, 1.6f, 1.3f, 1.2f, 0.8f, 2],
+                Rows = list.Select(e => new object?[]
+                {
+                    e.Date, e.Description, e.ExpenseCategory?.Name, e.FinancialAccount?.Name, e.Amount,
+                    e.IsPaid ? "نعم" : "لا", e.Notes
+                }).ToList(),
+                Footer = [null, "الإجمالي", null, null, list.Sum(e => e.Amount), null, null],
+                Summary =
+                [
+                    ("المدفوع", paid.ToString("N2")),
+                    ("غير مدفوع", (list.Sum(e => e.Amount) - paid).ToString("N2"))
+                ]
+            };
+
+            var (content, type, name) = await export.ExportAsync(report, ExportService.ParseFormat(format));
+            return File(content, type, name);
+        }
+
+        private async Task<List<Expense>> FilterAsync(int? year, int? month, Guid? categoryId, bool? unpaidOnly)
+        {
             var query = _context.Expenses
                 .AsNoTracking()
                 .Include(e => e.ExpenseCategory)
@@ -46,14 +84,11 @@ namespace DentalLab.Controllers
             if (unpaidOnly == true)
                 query = query.Where(e => !e.IsPaid);
 
-            var list = await query
+            return await query
                 .OrderByDescending(e => e.Year)
                 .ThenByDescending(e => e.Month)
                 .ThenByDescending(e => e.Date)
                 .ToListAsync();
-
-            await FillFilters(year, month, categoryId, unpaidOnly);
-            return View(list);
         }
 
         [HttpGet]

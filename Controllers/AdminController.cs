@@ -47,7 +47,8 @@ namespace DentalLab.Controllers
                 Month = now.Month,
                 TotalCases = await _context.LabCases.CountAsync(),
                 CasesThisMonth = await _context.LabCases.CountAsync(c => c.Year == now.Year && c.Month == now.Month),
-                PendingDelivery = await _context.LabCases.CountAsync(c => c.DeliveryDate == null && c.Status != CaseStatus.Cancelled),
+                PendingDelivery = await _context.LabCases.CountAsync(c => c.DeliveredAt == null && c.Status != CaseStatus.Cancelled
+                                                                      && c.DeliveryDate != null && c.DeliveryDate <= now.Date),
                 DoctorsCount = await _context.Doctors.CountAsync(),
                 ClinicsCount = await _context.Clinics.CountAsync(),
 

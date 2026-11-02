@@ -84,7 +84,7 @@ namespace DentalLab.ViewModels
         [DataType(DataType.Date)]
         public DateTime? ReceivedDate { get; set; }
 
-        [Display(Name = "تاريخ التسليم")]
+        [Display(Name = "موعد التسليم")]
         [DataType(DataType.Date)]
         public DateTime? DeliveryDate { get; set; }
 

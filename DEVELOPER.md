@@ -125,6 +125,22 @@ DentalLab/
 | `ExcelImportService` | Archive / finance Excel import |
 | `BackupService` | SQL backup/restore + uploads zip |
 | `AutoBackupHostedService` | Daily scheduled backup |
+| `ExportService` | Any report → PDF (QuestPDF, RTL Arabic) or Excel (ClosedXML). Controllers build a `ReportTable` and call `ExportAsync` |
+| `StatementService` | Clinic statement of account (same formula as receivables, with running balance) |
+| `AuditTrail` (Models) | Change log written automatically in `AppDbContext.SaveChanges*` for prices, cases, invoices, payments, expenses, credits, clinics, doctors |
+
+### Change log (سجل التغييرات)
+
+- Tracked saves are logged automatically. Bulk `ExecuteUpdate/ExecuteDelete` bypass it — log those explicitly (see `LabCasesController.AddEditAuditAsync`).
+- Bulk imports set `AppDbContext.AuditEnabled = false`.
+
+### Delivery (مواعيد التسليم)
+
+- `LabCase.DeliveryDate` = due date (موعد التسليم); `LabCase.DeliveredAt` = actual handover. Dashboard: `LabCases/Due`.
+
+### PDF fonts
+
+- QuestPDF uses Windows system fonts (Tahoma/Arial) via `Settings.UseSystemFonts = true` in `Program.cs`. QuestPDF Community license is free for organizations under $1M annual revenue.
 
 ---
 

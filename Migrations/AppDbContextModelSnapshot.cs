@@ -123,6 +123,53 @@ namespace DentalLab.Migrations
                         });
                 });
 
+            modelBuilder.Entity("DentalLab.Models.Entities.AuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Changes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("EntityLabel")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("Summary")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("EntityType", "EntityId");
+
+                    b.ToTable("AuditLogs");
+                });
+
             modelBuilder.Entity("DentalLab.Models.Entities.BackupSettings", b =>
                 {
                     b.Property<Guid>("Id")
@@ -835,6 +882,9 @@ namespace DentalLab.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime?>("DeliveryDate")
                         .HasColumnType("datetime2");
 
@@ -891,6 +941,8 @@ namespace DentalLab.Migrations
                     b.HasIndex("InvoiceId");
 
                     b.HasIndex("CaseNumber", "Year");
+
+                    b.HasIndex("DeliveryDate", "DeliveredAt");
 
                     b.ToTable("LabCases");
                 });
