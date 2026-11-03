@@ -202,13 +202,55 @@ namespace DentalLab.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Prog,Admin")]
-        public async Task<IActionResult> ImportArchive(bool confirm)
+        [RequestSizeLimit(20_000_000)]
+        public async Task<IActionResult> ImportArchive(IFormFile? file, bool confirm)
         {
-            var result = await _importService.ImportAsync();
+            var error = ValidateExcelUpload(file, confirm);
+            if (error != null)
+            {
+                ModelState.AddModelError(string.Empty, error);
+                return View();
+            }
+
+            var result = await ImportUploadAsync(file!, stream => _importService.ImportAsync(stream));
             TempData["SuccessMessage"] =
-                $"تم الاستيراد: {result.CasesImported} حالة، {result.ItemsImported} سطر، " +
+                $"تم الاستيراد من «{file!.FileName}»: {result.CasesImported} حالة، {result.ItemsImported} سطر، " +
                 $"{result.PricesImported} سعر، {result.DoctorsCreated} طبيب، {result.ClinicsCreated} عيادة.";
             return View("ImportResult", result);
+        }
+
+        /// <summary>
+        /// الاستيراد يكون فقط من ملف يختاره المستخدم بنفسه — لا يُستورد ملف الأرشيف المرفق مع التطبيق
+        /// (كان ذلك يضيف بيانات تجريبية إلى قاعدة بيانات العميل بضغطة واحدة).
+        /// </summary>
+        private static string? ValidateExcelUpload(IFormFile? file, bool confirm)
+        {
+            if (file == null || file.Length == 0)
+                return "اختر ملف Excel أولاً.";
+            if (!string.Equals(Path.GetExtension(file.FileName), ".xlsx", StringComparison.OrdinalIgnoreCase))
+                return "الملف يجب أن يكون بصيغة Excel (.xlsx).";
+            if (!confirm)
+                return "ضع علامة التأكيد قبل بدء الاستيراد.";
+            return null;
+        }
+
+        /// <summary>يقرأ الملف المرفوع في الذاكرة ويستورده؛ الملف التالف يعيد تنبيهاً بدل صفحة خطأ.</summary>
+        private static async Task<ImportResultVM> ImportUploadAsync(IFormFile file, Func<Stream, Task<ImportResultVM>> import)
+        {
+            using var memory = new MemoryStream();
+            await file.CopyToAsync(memory);
+            memory.Position = 0;
+
+            try
+            {
+                return await import(memory);
+            }
+            catch (Exception ex) when (ex is ClosedXML.Excel.Exceptions.ClosedXMLException or InvalidDataException or System.IO.IOException or FormatException)
+            {
+                var result = new ImportResultVM();
+                result.Warnings.Add("تعذّرت قراءة الملف — تأكد أنه ملف Excel صحيح وغير محمي بكلمة مرور. " + ex.Message);
+                return result;
+            }
         }
 
         [HttpGet]
@@ -218,9 +260,17 @@ namespace DentalLab.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Prog,Admin")]
-        public async Task<IActionResult> ImportFinance(bool confirm)
+        [RequestSizeLimit(20_000_000)]
+        public async Task<IActionResult> ImportFinance(IFormFile? file, bool confirm)
         {
-            var result = await _importService.ImportFinanceAsync();
+            var error = ValidateExcelUpload(file, confirm);
+            if (error != null)
+            {
+                ModelState.AddModelError(string.Empty, error);
+                return View();
+            }
+
+            var result = await ImportUploadAsync(file!, stream => _importService.ImportFinanceAsync(stream));
             TempData["SuccessMessage"] =
                 $"تم استيراد الماليات: {result.IncomeImported} إيراد ({result.IncomeTotal:N2})، " +
                 $"{result.ExpensesImported} مصروف ({result.ExpensesTotal:N2})، {result.LoansImported} سلفة.";

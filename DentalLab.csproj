@@ -44,6 +44,9 @@
     <!-- ملفات الرفع على الخادم تبقى كما هي؛ لا ننسخ الملفات المحلية فوقها -->
     <Content Update="wwwroot\upload\**" CopyToPublishDirectory="Never" />
     <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+    <!-- ملفات Excel التجريبية للتطوير المحلي فقط؛ على الخادم يختار المستخدم ملفه في صفحة الاستيراد -->
+    <None Update="Data\**" CopyToPublishDirectory="Never" />
+    <Content Update="Data\**" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
   <ItemGroup>

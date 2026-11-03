@@ -6,7 +6,7 @@
 <div class="card col-lg-8">
     <div class="card-body">
         <p>
-            سيُقرأ الملف <code>Data/Finance.xlsx</code> (ورقتا 2025 و 2026) وتُنشأ منه سجلات
+            اختر ملف الإيرادات والمصاريف (Excel) من جهازك. تُقرأ منه ورقتا 2025 و 2026 وتُنشأ سجلات
             الإيرادات والمصاريف والسلف.
         </p>
         <div class="alert alert-warning">
@@ -19,8 +19,20 @@
                 <li>إعادة الاستيراد آمنة — تُحذف الأسطر المستوردة سابقاً ولا تُكرَّر.</li>
             </ul>
         </div>
-        <form asp-action="ImportFinance" method="post">
-            <input type="hidden" name="confirm" value="true" />
+        <div asp-validation-summary="All" class="text-danger mb-2"></div>
+        <form asp-action="ImportFinance" method="post" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="file" class="form-label">ملف الإيرادات والمصاريف</label>
+                <input type="file" id="file" name="file" class="form-control"
+                       accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
+                <div class="form-text">صيغة .xlsx فقط.</div>
+            </div>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="confirm" name="confirm" value="true" required />
+                <label class="form-check-label" for="confirm">
+                    أفهم أن البيانات الموجودة في هذا الملف ستُضاف إلى قاعدة البيانات.
+                </label>
+            </div>
             <button class="btn btn-primary">ابدأ الاستيراد</button>
             <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
         </form>

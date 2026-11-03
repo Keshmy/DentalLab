@@ -38,6 +38,25 @@ namespace DentalLab.Services
             }
 
             using var workbook = new XLWorkbook(filePath);
+            return await ImportWorkbookAsync(workbook, result);
+        }
+
+        /// <summary>استيراد الأرشيف من ملف رفعه المستخدم (يُقرأ من الذاكرة، بلا ملفات مؤقتة).</summary>
+        public async Task<ImportResultVM> ImportAsync(Stream excel)
+        {
+            _context.AuditEnabled = false;
+            using var workbook = new XLWorkbook(excel);
+            return await ImportWorkbookAsync(workbook, new ImportResultVM());
+        }
+
+        private async Task<ImportResultVM> ImportWorkbookAsync(XLWorkbook workbook, ImportResultVM result)
+        {
+            // ملف الأرشيف يحتوي دائماً ورقة «Prices»؛ بدونها قد يكون ملف الماليات فتُقرأ أوراقه كحالات وهمية.
+            if (!HasPricesSheet(workbook))
+            {
+                result.Warnings.Add("هذا ليس ملف أرشيف الحالات (لا توجد ورقة Prices) — لم يُستورد شيء.");
+                return result;
+            }
 
             // كل مرحلة تُحفظ قبل التالية: المراحل اللاحقة تقرأ الأطباء والمراكز وقائمة الأسعار
             // من قاعدة البيانات، فلو لم تُحفظ لأُنشئت من جديد (تكرار) ولفشلت مطابقة الأسعار.
@@ -70,6 +89,30 @@ namespace DentalLab.Services
                 return result;
             }
 
+            using var workbook = new XLWorkbook(filePath);
+            return await ImportFinanceWorkbookAsync(workbook, result);
+        }
+
+        /// <summary>استيراد الماليات من ملف رفعه المستخدم (يُقرأ من الذاكرة، بلا ملفات مؤقتة).</summary>
+        public async Task<ImportResultVM> ImportFinanceAsync(Stream excel)
+        {
+            _context.AuditEnabled = false;
+            using var workbook = new XLWorkbook(excel);
+            return await ImportFinanceWorkbookAsync(workbook, new ImportResultVM());
+        }
+
+        private async Task<ImportResultVM> ImportFinanceWorkbookAsync(XLWorkbook workbook, ImportResultVM result)
+        {
+            // الملف يُفتح ويُتحقق منه قبل حذف أي سطر مستورد سابقاً، حتى لا يمسح ملفٌ خاطئ البيانات القديمة.
+            var hasYearSheet = workbook.Worksheets.Any(ws => ws.Name.Trim() is "2025" or "2026");
+            if (!hasYearSheet || HasPricesSheet(workbook))
+            {
+                result.Warnings.Add(HasPricesSheet(workbook)
+                    ? "هذا ملف أرشيف الحالات وليس ملف الإيرادات والمصاريف — لم يُستورد شيء ولم تُحذف أي بيانات."
+                    : "الملف لا يحتوي ورقة باسم 2025 أو 2026 — لم يُستورد شيء ولم تُحذف أي بيانات.");
+                return result;
+            }
+
             await RemoveFinanceImportedRows();
 
             var context = new FinanceContext
@@ -79,8 +122,6 @@ namespace DentalLab.Services
                 Accounts = await _context.FinancialAccounts.ToListAsync(),
                 Clinics = await _context.Clinics.ToListAsync()
             };
-
-            using var workbook = new XLWorkbook(filePath);
 
             // المجاميع المكتوبة يدوياً في الملف نفسه، تُستخدم للمطابقة وإظهار الفروقات
             ImportFinanceSheet(workbook, "2025", 2025, FinanceLayout2025, 17040m, 16830m, context);
@@ -448,6 +489,9 @@ namespace DentalLab.Services
         }
 
         /// <summary>حذف كل ما سبق استيراده من ملف الإيرادات والمصاريف، مع ترك الأسطر المُدخلة يدوياً كما هي.</summary>
+        private static bool HasPricesSheet(XLWorkbook workbook) =>
+            workbook.Worksheets.Any(ws => ws.Name.Trim().Equals("Prices", StringComparison.OrdinalIgnoreCase));
+
         private async Task RemoveFinanceImportedRows()
         {
             _context.Expenses.RemoveRange(await _context.Expenses
