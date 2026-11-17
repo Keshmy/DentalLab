@@ -21,11 +21,13 @@ namespace DentalLab.Controllers
     {
         private readonly AppDbContext _context;
         private readonly FinanceService _finance;
+        private readonly InvoiceService _invoices;
 
-        public IncomeController(AppDbContext context, FinanceService finance)
+        public IncomeController(AppDbContext context, FinanceService finance, InvoiceService invoices)
         {
             _context = context;
             _finance = finance;
+            _invoices = invoices;
         }
 
         public async Task<IActionResult> Index(int? year, int? month, Guid? clinicId, bool? pendingOnly)
@@ -163,6 +165,18 @@ namespace DentalLab.Controllers
                 return View(model);
             }
 
+            // تحصيل مرتبط بفاتورة: نفس العيادة، ولا يتجاوز مجموع التحصيلات قيمة الفاتورة.
+            if (item.InvoiceId.HasValue)
+            {
+                var error = await InvoicePaymentErrorAsync(item.InvoiceId.Value, item.Id, model.Amount, model.IsReceived, model.ClinicId);
+                if (error != null)
+                {
+                    ModelState.AddModelError(string.Empty, error);
+                    await FillLookups(model);
+                    return View(model);
+                }
+            }
+
             // لا نلمس InvoiceId: ارتباط الإيراد بالفاتورة تديره شاشة الفواتير
             item.Date = model.Date;
             item.Year = model.Year;
@@ -177,6 +191,8 @@ namespace DentalLab.Controllers
             item.Modified = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+            if (item.InvoiceId.HasValue)
+                await _invoices.RefreshStatusAsync(item.InvoiceId.Value);
 
             TempData["SuccessMessage"] = "تم حفظ الإيراد";
             return RedirectToAction(nameof(Index));
@@ -191,11 +207,23 @@ namespace DentalLab.Controllers
             if (item == null)
                 return View("NotFound");
 
+            if (item.InvoiceId.HasValue)
+            {
+                var error = await InvoicePaymentErrorAsync(item.InvoiceId.Value, item.Id, item.Amount, true, item.ClinicId);
+                if (error != null)
+                {
+                    TempData["ErrorMessage"] = error;
+                    return RedirectToAction(nameof(Index), new { year, month });
+                }
+            }
+
             item.IsReceived = true;
             item.Date ??= DateTime.Now.Date;
             item.Modified = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+            if (item.InvoiceId.HasValue)
+                await _invoices.RefreshStatusAsync(item.InvoiceId.Value);
 
             TempData["SuccessMessage"] = "تم تأكيد استلام المبلغ";
             return RedirectToAction(nameof(Index), new { year, month });
@@ -209,11 +237,41 @@ namespace DentalLab.Controllers
             if (item == null)
                 return View("NotFound");
 
+            var invoiceId = item.InvoiceId;
             _context.IncomeEntries.Remove(item);
             await _context.SaveChangesAsync();
+            // حذف تحصيل فاتورة يعيد حالتها (مسددة ← مسددة جزئياً / صادرة)
+            if (invoiceId.HasValue)
+                await _invoices.RefreshStatusAsync(invoiceId.Value);
 
             TempData["SuccessMessage"] = "تم حذف الإيراد";
             return RedirectToAction(nameof(Index));
+        }
+
+        /// <summary>
+        /// قواعد تحصيل الفاتورة نفسها التي تطبقها شاشة الفواتير: العيادة لا تتغير، ومجموع المستلم لا يتجاوز قيمة الفاتورة.
+        /// </summary>
+        private async Task<string?> InvoicePaymentErrorAsync(Guid invoiceId, Guid paymentId, decimal amount, bool isReceived, Guid? clinicId)
+        {
+            var invoice = await _context.Invoices.AsNoTracking()
+                .Include(i => i.Payments)
+                .FirstOrDefaultAsync(i => i.Id == invoiceId);
+            if (invoice == null)
+                return null;
+
+            if (clinicId != invoice.ClinicId)
+                return $"هذا التحصيل مرتبط بالفاتورة رقم {invoice.Number}، فلا يمكن نقله إلى عيادة أخرى. " +
+                       "إن كان مسجلاً خطأً فاحذفه وسجّل التحصيل الصحيح.";
+
+            if (!isReceived)
+                return null;
+
+            var otherPaid = invoice.Payments.Where(p => p.Id != paymentId && p.IsReceived).Sum(p => p.Amount);
+            var remaining = invoice.TotalAmount - otherPaid;
+            if (amount > remaining)
+                return $"المبلغ أكبر من المتبقي على الفاتورة رقم {invoice.Number} ({remaining:N2}). لا يمكن تحصيل أكثر من المستحق.";
+
+            return null;
         }
 
         /// <summary>السنة والشهر أساس كل التقارير، فنشتقهما من التاريخ إن تُركا فارغين.</summary>

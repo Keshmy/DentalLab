@@ -132,7 +132,8 @@ namespace DentalLab.Services
                     Repaid = g.Where(x => x.Direction == LoanDirection.Repaid).Sum(x => x.Amount),
                     Borrowed = g.Where(x => x.Direction == LoanDirection.Borrowed).Sum(x => x.Amount),
                     Settled = g.Where(x => x.Direction == LoanDirection.Settled).Sum(x => x.Amount),
-                    WrittenOff = g.Where(x => x.IsWrittenOff).Sum(x => x.Amount)
+                    // الشطب لا معنى له إلا على سلفة منحناها
+                    WrittenOff = g.Where(x => x.IsWrittenOff && x.Direction == LoanDirection.Given).Sum(x => x.Amount)
                 })
                 .ToListAsync();
 
@@ -272,11 +273,12 @@ namespace DentalLab.Services
                 .Select(g => new LoanBalanceVM
                 {
                     PersonName = g.Key,
-                    Given = g.Where(x => x.Direction == LoanDirection.Given && !x.IsWrittenOff).Sum(x => x.Amount),
+                    // كل السلف الممنوحة (حتى المشطوبة)؛ الشطب يُطرح مرة واحدة في LoanBalanceVM.Balance
+                    Given = g.Where(x => x.Direction == LoanDirection.Given).Sum(x => x.Amount),
                     Repaid = g.Where(x => x.Direction == LoanDirection.Repaid).Sum(x => x.Amount),
                     Borrowed = g.Where(x => x.Direction == LoanDirection.Borrowed).Sum(x => x.Amount),
                     Settled = g.Where(x => x.Direction == LoanDirection.Settled).Sum(x => x.Amount),
-                    WrittenOff = g.Where(x => x.IsWrittenOff).Sum(x => x.Amount)
+                    WrittenOff = g.Where(x => x.IsWrittenOff && x.Direction == LoanDirection.Given).Sum(x => x.Amount)
                 })
                 .ToListAsync();
 
@@ -285,12 +287,15 @@ namespace DentalLab.Services
                        .ToList();
         }
 
-        /// <summary>رصيد كل حساب = افتتاحي + الداخل − الخارج.</summary>
+        /// <summary>
+        /// رصيد كل حساب = افتتاحي + الداخل − الخارج.
+        /// مجموع الأسطر = رصيد الصندوق في سجل الصندوق: الحركات بدون حساب تظهر في سطر «بدون حساب»،
+        /// والحسابات الموقوفة تظهر ما دام فيها رصيد (وإلا اختفى مالها من المجموع).
+        /// </summary>
         public async Task<List<AccountBalanceVM>> GetAccountBalancesAsync()
         {
             var accounts = await _context.FinancialAccounts
                 .AsNoTracking()
-                .Where(a => a.IsActive)
                 .OrderBy(a => a.Name)
                 .ToListAsync();
 
@@ -320,17 +325,39 @@ namespace DentalLab.Services
                 .Select(g => new { Id = g.Key, Total = g.Sum(x => x.Amount) })
                 .ToListAsync();
 
-            return accounts.Select(a => new AccountBalanceVM
+            var list = accounts.Select(a => new AccountBalanceVM
             {
                 AccountId = a.Id,
-                Name = a.Name,
+                Name = a.IsActive ? a.Name : a.Name + " (موقوف)",
                 Kind = a.Kind,
                 OpeningBalance = a.OpeningBalance,
                 In = (incomeIn.FirstOrDefault(x => x.Id == a.Id)?.Total ?? 0m)
                      + (loanIn.FirstOrDefault(x => x.Id == a.Id)?.Total ?? 0m),
                 Out = (expenseOut.FirstOrDefault(x => x.Id == a.Id)?.Total ?? 0m)
                       + (loanOut.FirstOrDefault(x => x.Id == a.Id)?.Total ?? 0m)
-            }).ToList();
+            })
+            .Where(x => accounts.First(a => a.Id == x.AccountId).IsActive || x.Balance != 0)
+            .ToList();
+
+            // حركات نقدية سُجّلت بدون اختيار حساب — كانت تُحسب في سجل الصندوق ولا تظهر في الحسابات.
+            var unassignedIn = (await _context.IncomeEntries.Where(e => e.IsReceived && e.FinancialAccountId == null).SumAsync(e => (decimal?)e.Amount) ?? 0m)
+                               + (await _context.LoanTransactions.Where(l => (l.Direction == LoanDirection.Repaid || l.Direction == LoanDirection.Borrowed) && l.FinancialAccountId == null).SumAsync(l => (decimal?)l.Amount) ?? 0m);
+            var unassignedOut = (await _context.Expenses.Where(e => e.IsPaid && e.FinancialAccountId == null).SumAsync(e => (decimal?)e.Amount) ?? 0m)
+                                + (await _context.LoanTransactions.Where(l => (l.Direction == LoanDirection.Given || l.Direction == LoanDirection.Settled) && l.FinancialAccountId == null).SumAsync(l => (decimal?)l.Amount) ?? 0m);
+            if (unassignedIn != 0 || unassignedOut != 0)
+            {
+                list.Add(new AccountBalanceVM
+                {
+                    AccountId = Guid.Empty,
+                    IsUnassigned = true,
+                    Name = "بدون حساب",
+                    Kind = "حركات لم يُحدَّد حسابها",
+                    In = unassignedIn,
+                    Out = unassignedOut
+                });
+            }
+
+            return list;
         }
     }
 }

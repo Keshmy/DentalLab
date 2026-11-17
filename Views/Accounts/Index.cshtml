@@ -58,18 +58,31 @@
     <tbody>
         @foreach (var a in rows)
         {
-            <tr>
-                <td><a asp-action="Edit" asp-route-id="@a.AccountId">@a.Name</a></td>
+            <tr class="@(a.IsUnassigned ? "table-warning" : "")">
+                <td>
+                    @if (a.IsUnassigned)
+                    {
+                        <span>@a.Name</span>
+                        <div class="small text-muted">حركات سُجّلت بدون اختيار حساب — عدّلها واختر حسابها لتنتقل إليه</div>
+                    }
+                    else
+                    {
+                        <a asp-action="Edit" asp-route-id="@a.AccountId">@a.Name</a>
+                    }
+                </td>
                 <td>@a.Kind</td>
                 <td data-order="@a.OpeningBalance">@a.OpeningBalance.ToString("N2")</td>
                 <td class="text-success" data-order="@a.In">@a.In.ToString("N2")</td>
                 <td class="text-danger" data-order="@a.Out">@a.Out.ToString("N2")</td>
                 <td class="fw-bold" data-order="@a.Balance">@a.Balance.ToString("N2")</td>
                 <td>
-                    <a asp-action="Edit" asp-route-id="@a.AccountId" class="btn btn-sm btn-outline-secondary">تعديل</a>
-                    <form asp-action="Delete" asp-route-id="@a.AccountId" method="post" class="d-inline" onsubmit="return confirm('حذف؟');">
-                        <button class="btn btn-sm btn-outline-danger">حذف</button>
-                    </form>
+                    @if (!a.IsUnassigned)
+                    {
+                        <a asp-action="Edit" asp-route-id="@a.AccountId" class="btn btn-sm btn-outline-secondary">تعديل</a>
+                        <form asp-action="Delete" asp-route-id="@a.AccountId" method="post" class="d-inline" onsubmit="return confirm('حذف؟');">
+                            <button class="btn btn-sm btn-outline-danger">حذف</button>
+                        </form>
+                    }
                 </td>
             </tr>
         }

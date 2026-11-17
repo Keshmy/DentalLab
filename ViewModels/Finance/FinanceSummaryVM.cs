@@ -216,7 +216,16 @@ namespace DentalLab.ViewModels.Finance
         /// موجب = له علينا لا شيء وهو مدين لنا، سالب = نحن مدينون له.
         /// </summary>
         [Display(Name = "المتبقي")]
-        public decimal Balance => (Given - Repaid - WrittenOff) - (Borrowed - Settled);
+        public decimal Balance
+        {
+            get
+            {
+                // الشطب يُسقط ما بقي من السلفة فقط: لا يجعل الرصيد «علينا له» ولا يُطرح مرتين.
+                var owedToUs = Given - Repaid;
+                var writtenOff = Math.Min(WrittenOff, Math.Max(0m, owedToUs));
+                return owedToUs - writtenOff - (Borrowed - Settled);
+            }
+        }
 
         [Display(Name = "الجهة")]
         public string Side => Balance > 0 ? "لنا عليه" : Balance < 0 ? "علينا له" : "مسوّى";
@@ -225,6 +234,9 @@ namespace DentalLab.ViewModels.Finance
     public class AccountBalanceVM
     {
         public Guid AccountId { get; set; }
+
+        /// <summary>سطر «بدون حساب»: الحركات النقدية التي لم يُختر لها حساب (ليس حساباً حقيقياً).</summary>
+        public bool IsUnassigned { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Kind { get; set; } = string.Empty;
 
