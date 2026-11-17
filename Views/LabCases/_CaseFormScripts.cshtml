@@ -1,3 +1,4 @@
+<script src="~/js/tooth-picker.js" asp-append-version="true"></script>
 <script>
     (function () {
         'use strict';
@@ -63,6 +64,7 @@
             var row = wrapper.querySelector('.item-row');
             if (!row) return null;
             body.appendChild(row);
+            renderTeeth(row);
 
             if (isRemake || (statusSelect && statusSelect.value === 'إعادة')) {
                 var check = row.querySelector('.js-remake');
@@ -180,6 +182,57 @@
             }
         }
 
+        // ───── الأسنان ─────
+        function teethCount(row) {
+            return ToothPicker.count(ToothPicker.parse(row.querySelector('.js-teeth').value));
+        }
+
+        function renderTeeth(row) {
+            var btn = row.querySelector('.js-teeth-open');
+            if (btn) btn.innerHTML = ToothPicker.crossHtml(ToothPicker.parse(row.querySelector('.js-teeth').value));
+        }
+
+        function clearLegacyTeeth(row) {
+            var legacy = row.querySelector('.js-teeth-legacy');
+            if (legacy) legacy.value = '';
+            var note = row.querySelector('.js-teeth-legacy-note');
+            if (note) note.remove();
+        }
+
+        function isPerTooth(row) {
+            var sel = row.querySelector('.js-service');
+            var opt = sel && sel.options[sel.selectedIndex];
+            return !!opt && opt.getAttribute('data-per-tooth') === '1';
+        }
+
+        // المنتج المسعّر بالسن: العدد = عدد الأسنان المختارة (يبقى قابلاً للتعديل يدوياً)
+        function applyPerTooth(row) {
+            var n = teethCount(row);
+            if (n > 0 && isPerTooth(row)) {
+                row.querySelector('.js-qty').value = n;
+                recalc();
+            }
+        }
+
+        body.querySelectorAll('.item-row').forEach(renderTeeth);
+
+        body.addEventListener('click', function (e) {
+            var btn = e.target.closest('.js-teeth-open');
+            if (!btn) return;
+            var row = btn.closest('.item-row');
+            var input = row.querySelector('.js-teeth');
+            ToothPicker.open(input.value, function (value) {
+                input.value = value;
+                if (value) clearLegacyTeeth(row);
+                renderTeeth(row);
+                applyPerTooth(row);
+            });
+        });
+
+        body.addEventListener('change', function (e) {
+            if (e.target.classList.contains('js-service')) applyPerTooth(e.target.closest('.item-row'));
+        });
+
         document.getElementById('addRow').addEventListener('click', function () { addRow(false); });
         document.getElementById('addRemake').addEventListener('click', function () { addRow(true); });
 
@@ -193,10 +246,9 @@
                 row.querySelector('.js-price').value = 0;
                 row.querySelector('.js-cost').value = 0;
                 row.querySelector('.js-qty').value = 1;
-                var arch = row.querySelector('.js-arch');
-                if (arch) arch.value = '';
-                var numbers = row.querySelector('input[name*="ToothNumbers"]');
-                if (numbers) numbers.value = '';
+                row.querySelector('.js-teeth').value = '';
+                clearLegacyTeeth(row);
+                renderTeeth(row);
                 var product = row.querySelector('input[name*="ProductName"]');
                 if (product) product.value = '';
                 var remake = row.querySelector('.js-remake');

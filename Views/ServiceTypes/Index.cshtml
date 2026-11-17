@@ -50,6 +50,10 @@
                     {
                         <span class="badge bg-secondary">موقوف</span>
                     }
+                    @if (s.PricedPerTooth)
+                    {
+                        <span class="badge bg-info text-dark">بالسن</span>
+                    }
                 </td>
                 <td>
                     <form asp-action="Delete" asp-route-id="@s.Id" method="post" class="d-inline" onsubmit="return confirm('حذف؟');">

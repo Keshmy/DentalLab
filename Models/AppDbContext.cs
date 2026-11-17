@@ -60,6 +60,7 @@ namespace DentalLab.Models
         public DbSet<BackupSettings> BackupSettings { get; set; }
         public DbSet<ClinicCreditEntry> ClinicCreditEntries { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
+        public DbSet<ImportBatch> ImportBatches { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -267,6 +268,13 @@ namespace DentalLab.Models
             modelBuilder.Entity<AuditLog>().HasIndex(a => a.Timestamp);
             modelBuilder.Entity<AuditLog>().HasIndex(a => new { a.EntityType, a.EntityId });
             modelBuilder.Entity<LabCase>().HasIndex(c => new { c.DeliveryDate, c.DeliveredAt });
+
+            modelBuilder.Entity<ImportBatch>().Property(x => x.Id).ValueGeneratedNever();
+            modelBuilder.Entity<ImportBatch>().HasIndex(x => x.Created);
+            modelBuilder.Entity<LabCase>().HasIndex(x => x.ImportBatchId);
+            modelBuilder.Entity<Doctor>().HasIndex(x => x.ImportBatchId);
+            modelBuilder.Entity<Clinic>().HasIndex(x => x.ImportBatchId);
+            modelBuilder.Entity<ServiceType>().HasIndex(x => x.ImportBatchId);
 
             modelBuilder.Seed();
         }

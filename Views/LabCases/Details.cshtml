@@ -90,7 +90,7 @@
                     <thead>
                         <tr>
                             <th>المنتج</th>
-                            <th>مكان الأسنان</th>
+                            <th>الأسنان</th>
                             <th>العدد</th>
                             <th>السعر</th>
                             <th>الإجمالي</th>
@@ -116,7 +116,16 @@
                                         }
                                     }
                                 </td>
-                                <td>@(item.ToothPosition ?? "—")</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(item.Teeth))
+                                    {
+                                        <partial name="Partial/_TeethCross" model="item.Teeth" />
+                                    }
+                                    else
+                                    {
+                                        @(item.ToothPosition ?? "—")
+                                    }
+                                </td>
                                 <td>@item.Quantity</td>
                                 <td>@item.UnitPrice.ToString("N2")</td>
                                 <td>@item.LineTotal.ToString("N2")</td>

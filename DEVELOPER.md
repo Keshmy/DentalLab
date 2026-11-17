@@ -134,6 +134,22 @@ DentalLab/
 - Tracked saves are logged automatically. Bulk `ExecuteUpdate/ExecuteDelete` bypass it — log those explicitly (see `LabCasesController.AddEditAuditAsync`).
 - Bulk imports set `AppDbContext.AuditEnabled = false`.
 
+### Case import (استيراد الحالات)
+
+- UI: الإعدادات → استيراد الحالات (`CaseImportController`, `Services/CaseImportService.cs`).
+- Flow: download template → upload → preview (row errors, unknown doctors/clinics/products with suggested matches) → confirm. Nothing is saved before confirm; confirm re-reads and re-validates the file.
+- Template columns are defined once in `CaseImportService.Columns` (titles, required flag, help, accepted aliases). One row = one product line; rows with the same case number + year = one case.
+- Every import is an `ImportBatch`; created cases/doctors/clinics/products carry `ImportBatchId`. Undo deletes the batch's cases and only the names nothing else uses. Undo is refused if any case was invoiced.
+- The old legacy archive import (`Admin/ImportArchive`) now redirects here. `ExcelImportService` is kept only for the dev `AutoImportExcel` startup option and the finance import.
+
+### Teeth (صليب الأسنان)
+
+- Each case line stores teeth in `LabCaseItem.Teeth` as FDI codes: singles comma-separated, bridges joined by `-`, pontic (دمية) suffixed `p`. Example: `13-14p-15,21,75` (51–85 = primary teeth).
+- Parsing/validation/formatting: `Classes/TeethCode.cs` (server) and `wwwroot/js/tooth-picker.js` (browser) — keep the two in sync. Bridges must be in one arch, contiguous, and start/end on real teeth.
+- UI: per-line Palmer cross button opens `#toothPickerModal` (in `Views/LabCases/_CaseForm.cshtml`); display-only cross: `Views/Shared/Partial/_TeethCross.cshtml`. The cross is always LTR (patient's right on screen left).
+- `ToothPosition` keeps a readable copy (`13-(14)-15، 21`) for lists/search, and still holds the old free text for cases entered before the picker.
+- `ServiceType.PricedPerTooth`: quantity auto-fills from the tooth count (form and import); bridges count every unit including pontics.
+
 ### Delivery (مواعيد التسليم)
 
 - `LabCase.DeliveryDate` = due date (موعد التسليم); `LabCase.DeliveredAt` = actual handover. Dashboard: `LabCases/Due`.

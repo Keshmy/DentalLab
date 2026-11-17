@@ -1,3 +1,4 @@
+using DentalLab.Classes;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using DentalLab.Models.Entities;
@@ -27,7 +28,7 @@ namespace DentalLab.Models
         };
 
         private static readonly HashSet<string> Skipped =
-            ["Id", "Created", "Modified", "Year", "Month", "DocumentNumber", "ReceiptNumber"];
+            ["Id", "Created", "Modified", "Year", "Month", "DocumentNumber", "ReceiptNumber", "ImportBatchId"];
 
         public static IEnumerable<string> AuditedTypeNames => Audited.Keys.Select(t => t.Name);
 
@@ -112,7 +113,8 @@ namespace DentalLab.Models
         /// <summary>وصف الأسطر مرتباً أبجدياً حتى لا يظهر «تغيير» لمجرد اختلاف الترتيب.</summary>
         public static string DescribeItems(IEnumerable<LabCaseItem> items) =>
             string.Join("، ", items
-                .Select(i => $"{i.DisplayName} ×{i.Quantity} @ {i.UnitPrice:N2}{(i.IsRemake ? " (إعادة)" : "")}")
+                .Select(i => $"{i.DisplayName} ×{i.Quantity} @ {i.UnitPrice:N2}{(i.IsRemake ? " (إعادة)" : "")}" +
+                             (string.IsNullOrWhiteSpace(i.Teeth) ? "" : $" [أسنان {TeethCode.ToDisplay(i.Teeth)}]"))
                 .OrderBy(s => s, StringComparer.Ordinal));
 
         /// <summary>المعرّفات المولّدة في قاعدة البيانات لا تُعرف قبل الحفظ؛ نولّدها هنا ليرتبط السجل بها.</summary>

@@ -409,3 +409,47 @@ textarea.is-invalid {
 .ts-dropdown .option { padding: .55rem .9rem; }
 .ts-dropdown .active { background: #e8f3f1; color: inherit; }
 .ts-dropdown .no-results, .ts-dropdown .create { padding: .55rem .9rem; color: #6c757d; }
+
+/* ── صليب الأسنان (Palmer) ──
+   يُعرض دائماً من اليسار لليمين كما يراه الطبيب: يمين المريض على يسار الشاشة. */
+.teeth-cross {
+    display: inline-grid;
+    grid-template-columns: auto auto;
+    direction: ltr;
+    font-weight: 600;
+    line-height: 1.2;
+    min-width: 4.5rem;
+}
+.teeth-cross .tc-q { display: flex; gap: 2px; padding: 1px 4px; min-height: 1.3em; min-width: 1.6rem; white-space: nowrap; }
+.teeth-cross .tc-ur, .teeth-cross .tc-lr { justify-content: flex-end; border-right: 2px solid #495057; }
+.teeth-cross .tc-ul, .teeth-cross .tc-ll { justify-content: flex-start; }
+.teeth-cross .tc-ur, .teeth-cross .tc-ul { border-bottom: 2px solid #495057; }
+.teeth-cross .tc-bridge { border-top: 2px solid #0d6efd; }
+.teeth-cross .tc-primary { color: #6f42c1; }
+.teeth-cross-empty { color: #6c757d; font-size: .85rem; }
+.teeth-open-btn { background: #fff; border: 1px solid #dee2e6; border-radius: .5rem; padding: .3rem .5rem; min-height: 38px; width: 100%; text-align: center; }
+.teeth-open-btn:hover { border-color: #0d6efd; }
+
+/* نافذة اختيار الأسنان */
+.tp-chart { direction: ltr; display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.tp-q { display: flex; gap: 4px; padding: 8px; flex-wrap: nowrap; }
+.tp-q1, .tp-q4 { justify-content: flex-end; border-right: 3px solid #495057; }
+.tp-q2, .tp-q3 { justify-content: flex-start; }
+.tp-q1, .tp-q2 { border-bottom: 3px solid #495057; }
+.tp-tooth {
+    width: 44px; height: 52px; border: 1px solid #ced4da; border-radius: 10px; background: #fff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; padding: 0;
+}
+.tp-tooth span { font-size: 1.05rem; font-weight: 700; }
+.tp-tooth small { font-size: .65rem; color: #6c757d; margin-top: 3px; }
+.tp-tooth:hover { border-color: #0d6efd; }
+.tp-tooth.is-on { background: #0d6efd; border-color: #0d6efd; color: #fff; }
+.tp-tooth.is-bridge { background: #198754; border-color: #198754; color: #fff; }
+.tp-tooth.is-pontic { background: #fff; border: 2px dashed #198754; color: #198754; }
+.tp-tooth.is-pending { background: #fff3cd; border: 2px solid #fd7e14; }
+.tp-tooth.is-on small, .tp-tooth.is-bridge small { color: rgba(255,255,255,.8); }
+.tp-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: #e7f1ff; color: #084298; margin: 2px; font-size: .85rem; }
+.tp-chip.is-bridge { background: #d1e7dd; color: #0f5132; }
+.tp-chip button { border: 0; background: none; color: inherit; font-weight: 700; padding: 0 2px; }
+.tp-legend span { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-inline: 8px 4px; }
+@media (max-width: 991px) { .tp-tooth { width: 34px; height: 44px; } .tp-tooth span { font-size: .9rem; } .tp-q { gap: 2px; padding: 4px; } }

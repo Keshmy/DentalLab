@@ -22,6 +22,9 @@ namespace DentalLab.Models.Entities
         [Display(Name = "رصيد افتتاحي (دين سابق)")]
         public decimal OpeningBalance { get; set; }
 
+        /// <summary>عملية الاستيراد التي أنشأت هذا السجل (فارغ = أُدخل يدوياً). تُستخدم للتراجع عن الاستيراد.</summary>
+        public Guid? ImportBatchId { get; set; }
+
         public ICollection<LabCase> LabCases { get; set; } = new List<LabCase>();
 
         public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();

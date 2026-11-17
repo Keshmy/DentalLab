@@ -1,0 +1,229 @@
+@using DentalLab.Services
+@model CaseImportPreview
+@{
+    ViewData["Title"] = "معاينة الاستيراد";
+    var errorCases = Model.Cases.Where(c => c.HasErrors).ToList();
+    var goodCases = Model.Cases.Where(c => !c.HasErrors).ToList();
+    const int shownCases = 300;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">معاينة الاستيراد — @Model.FileName</h3>
+    <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+</div>
+
+<div class="alert alert-info">لم يُحفظ شيء بعد. راجع المعاينة ثم اضغط «تأكيد الاستيراد» في أسفل الصفحة.</div>
+
+@{ var unnumbered = goodCases.Count(c => c.CaseNumber == null); }
+@if (unnumbered > 0)
+{
+    <div class="alert alert-warning">
+        <strong>@unnumbered</strong> حالة بدون «رقم الحالة» — ستأخذ أرقاماً تلقائية.
+        انتبه: إذا استوردت نفس الملف مرة ثانية ستُضاف هذه الحالات مرة أخرى، لأن البرنامج لا يستطيع معرفة أنها مكررة بدون رقم.
+    </div>
+}
+
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="card border-success"><div class="card-body py-2">
+            <div class="small text-muted">حالات ستُستورد</div>
+            <div class="fs-4 fw-bold text-success">@Model.ValidCaseCount</div>
+            <div class="small text-muted">@Model.ValidRowCount سطر</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card @(Model.InvalidCaseCount > 0 ? "border-danger" : "")"><div class="card-body py-2">
+            <div class="small text-muted">حالات فيها أخطاء (ستُتخطى)</div>
+            <div class="fs-4 fw-bold @(Model.InvalidCaseCount > 0 ? "text-danger" : "")">@Model.InvalidCaseCount</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card @(Model.Unknown.Count > 0 ? "border-warning" : "")"><div class="card-body py-2">
+            <div class="small text-muted">أسماء غير مسجلة</div>
+            <div class="fs-4 fw-bold @(Model.Unknown.Count > 0 ? "text-warning" : "")">@Model.Unknown.Count</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="small text-muted">إجمالي الأسطر في الملف</div>
+            <div class="fs-4 fw-bold">@Model.Rows.Count</div>
+        </div></div>
+    </div>
+</div>
+
+<form asp-action="Confirm" method="post" id="confirmForm">
+    <input type="hidden" name="payload" value="@ViewBag.Payload" />
+    <input type="hidden" name="fileName" value="@Model.FileName" />
+
+    @if (Model.Unknown.Count > 0)
+    {
+        <div class="card mb-3 border-warning">
+            <div class="card-header bg-warning-subtle fw-bold">أسماء غير مسجلة في البرنامج — اختر لكل اسم</div>
+            <div class="card-body pb-0">
+                <p class="text-muted small mb-2">
+                    إذا كان الاسم مكتوباً بشكل مختلف لطبيب أو عيادة أو منتج موجود، اختره من القائمة حتى لا يتكرر.
+                    الاقتراح المختار تلقائياً هو أقرب اسم موجود.
+                </p>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 90px">النوع</th>
+                            <th>الاسم في الملف</th>
+                            <th style="width: 120px">الأسطر</th>
+                            <th style="min-width: 320px">الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < Model.Unknown.Count; i++)
+                        {
+                            var u = Model.Unknown[i];
+                            var existing = u.Kind switch
+                            {
+                                NameKind.Doctor => Model.Doctors,
+                                NameKind.Clinic => Model.Clinics,
+                                _ => Model.Products
+                            };
+                            <tr>
+                                <td><span class="badge bg-secondary">@u.KindLabel</span></td>
+                                <td class="fw-bold">@u.Name</td>
+                                <td class="small text-muted">@string.Join("، ", u.RowNumbers.Take(8))@(u.RowNumbers.Count > 8 ? "…" : "")</td>
+                                <td>
+                                    <input type="hidden" name="choices[@i].Kind" value="@((int)u.Kind)" />
+                                    <input type="hidden" name="choices[@i].Key" value="@u.Key" />
+                                    <select name="choices[@i].Choice" class="form-select js-searchable">
+                                        <option value="new" selected="@(u.SuggestedId == null)">➕ إنشاء @u.KindLabel جديد: @u.Name</option>
+                                        @if (u.SuggestedId != null)
+                                        {
+                                            <option value="@u.SuggestedId" selected>✔ مطابقة مع: @u.SuggestedName (اقتراح)</option>
+                                        }
+                                        @foreach (var e in existing.Where(e => e.Id != u.SuggestedId))
+                                        {
+                                            <option value="@e.Id">مطابقة مع: @e.Name</option>
+                                        }
+                                    </select>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @if (errorCases.Count > 0)
+    {
+        <div class="card mb-3 border-danger">
+            <div class="card-header bg-danger text-white fw-bold">أخطاء — هذه الحالات لن تُستورد (@errorCases.Count)</div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 80px">الصف</th>
+                            <th style="width: 90px">رقم الحالة</th>
+                            <th>اسم الحالة</th>
+                            <th>المشكلة</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in errorCases.Take(500))
+                        {
+                            foreach (var err in c.Errors)
+                            {
+                                <tr class="table-danger">
+                                    <td>@string.Join("، ", c.Rows.Select(r => r.RowNumber))</td>
+                                    <td>@c.CaseNumber</td>
+                                    <td>@c.Rows[0].Patient</td>
+                                    <td>@err</td>
+                                </tr>
+                            }
+                            foreach (var r in c.Rows.Where(r => r.Errors.Count > 0))
+                            {
+                                <tr>
+                                    <td>@r.RowNumber</td>
+                                    <td>@r.CaseNumber</td>
+                                    <td>@r.Patient</td>
+                                    <td>@string.Join(" ", r.Errors)</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-body py-2 small text-muted">
+                يمكنك تصحيح هذه الأسطر في الملف ورفعه مرة أخرى بعد الاستيراد — الحالات المستوردة الآن لن تتكرر إذا كان لها رقم حالة.
+            </div>
+        </div>
+    }
+
+    <div class="card mb-3">
+        <div class="card-header fw-bold">الحالات التي ستُستورد (@goodCases.Count)</div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>رقم الحالة</th>
+                        <th>اسم الحالة</th>
+                        <th>الطبيب</th>
+                        <th>العيادة</th>
+                        <th>الاستلام</th>
+                        <th>التسليم</th>
+                        <th>المنتجات</th>
+                        <th>الحالة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in goodCases.Take(shownCases))
+                    {
+                        var h = c.Rows[0];
+                        <tr>
+                            <td>@(c.CaseNumber?.ToString() ?? "تلقائي")</td>
+                            <td>@h.Patient</td>
+                            <td>@h.Doctor</td>
+                            <td>@h.Clinic</td>
+                            <td class="text-nowrap">@h.Received?.ToString("yyyy/MM/dd")</td>
+                            <td class="text-nowrap">@c.Rows.Select(r => r.Due).FirstOrDefault(d => d.HasValue)?.ToString("yyyy/MM/dd")</td>
+                            <td class="small">
+                                @foreach (var r in c.Rows)
+                                {
+                                    <div>
+                                        @(r.IsRemake ? "إعادة - " : "")@r.Product × @r.Quantity
+                                        <span class="text-muted">— @(r.Price.HasValue ? r.Price.Value.ToString("N2") : "سعر القائمة")</span>
+                                    </div>
+                                }
+                            </td>
+                            <td>@h.Status</td>
+                        </tr>
+                    }
+                    @if (goodCases.Count > shownCases)
+                    {
+                        <tr><td colspan="8" class="text-center text-muted">… و@(goodCases.Count - shownCases) حالة أخرى</td></tr>
+                    }
+                    @if (goodCases.Count == 0)
+                    {
+                        <tr><td colspan="8" class="text-center text-muted">لا توجد حالات سليمة في الملف.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-4">
+        @if (goodCases.Count > 0)
+        {
+            <button class="btn btn-primary px-4" id="confirmBtn">تأكيد الاستيراد (@goodCases.Count حالة)</button>
+        }
+        <a asp-action="Index" class="btn btn-outline-secondary">إلغاء</a>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        // منع الضغط المزدوج على التأكيد (كان سبب تكرار الاستيراد سابقاً)
+        document.getElementById('confirmForm')?.addEventListener('submit', function () {
+            var btn = document.getElementById('confirmBtn');
+            if (btn) { btn.disabled = true; btn.textContent = 'جارٍ الاستيراد...'; }
+        });
+    </script>
+}

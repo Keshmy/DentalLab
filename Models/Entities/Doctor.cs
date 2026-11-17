@@ -17,6 +17,9 @@ namespace DentalLab.Models.Entities
         [Display(Name = "ملاحظات")]
         public string? Notes { get; set; }
 
+        /// <summary>عملية الاستيراد التي أنشأت هذا السجل (فارغ = أُدخل يدوياً). تُستخدم للتراجع عن الاستيراد.</summary>
+        public Guid? ImportBatchId { get; set; }
+
         public ICollection<LabCase> LabCases { get; set; } = new List<LabCase>();
 
         /// <summary>الأسعار الخاصة بهذا الطبيب (تتجاوز السعر العام).</summary>

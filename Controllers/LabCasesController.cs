@@ -192,6 +192,7 @@ namespace DentalLab.Controllers
 
             if (lines.Count == 0)
                 ModelState.AddModelError(string.Empty, "أضف سطراً واحداً على الأقل (المنتج والعدد والسعر).");
+            ValidateTeeth(model);
 
             if (!ModelState.IsValid)
             {
@@ -264,6 +265,7 @@ namespace DentalLab.Controllers
 
             if (lines.Count == 0)
                 ModelState.AddModelError(string.Empty, "أضف سطراً واحداً على الأقل (المنتج والعدد والسعر).");
+            ValidateTeeth(model);
 
             var existing = await _context.LabCases
                 .AsNoTracking()
@@ -417,32 +419,15 @@ namespace DentalLab.Controllers
                 .Distinct()
                 .ToListAsync();
 
-            var term = NormalizeArabic(q);
+            var term = ArabicText.Normalize(q);
             var matches = names
-                .Where(n => !string.IsNullOrWhiteSpace(n) && NormalizeArabic(n).Contains(term))
-                .OrderBy(n => NormalizeArabic(n).StartsWith(term) ? 0 : 1)
+                .Where(n => !string.IsNullOrWhiteSpace(n) && ArabicText.Normalize(n).Contains(term))
+                .OrderBy(n => ArabicText.Normalize(n).StartsWith(term) ? 0 : 1)
                 .ThenBy(n => n)
                 .Take(20)
                 .ToList();
 
             return Json(matches);
-        }
-
-        private static string NormalizeArabic(string s)
-        {
-            var sb = new System.Text.StringBuilder(s.Length);
-            foreach (var ch in s.Trim().ToLowerInvariant())
-            {
-                if (ch is >= 'ً' and <= 'ْ' or 'ـ') continue; // تشكيل وتطويل
-                sb.Append(ch switch
-                {
-                    'أ' or 'إ' or 'آ' or 'ٱ' => 'ا',
-                    'ة' => 'ه',
-                    'ى' => 'ي',
-                    _ => ch
-                });
-            }
-            return sb.ToString();
         }
 
         /// <summary>سعر نوع العمل لهذا الطبيب/العيادة + التكلفة.</summary>
@@ -578,7 +563,8 @@ namespace DentalLab.Controllers
                     IsRemake = treatAsRemake,
                     RemakeReason = treatAsRemake ? line.RemakeReason : null,
                     RemakeSequence = treatAsRemake ? remakeSequence : 0,
-                    ToothPosition = FormatTooth(line.ToothArch, line.ToothNumbers),
+                    Teeth = string.IsNullOrWhiteSpace(line.Teeth) ? null : line.Teeth,
+                    ToothPosition = Truncate(LineTeethText(line), 100),
                     Notes = line.Notes,
                     Created = DateTime.UtcNow
                 });
@@ -628,6 +614,7 @@ namespace DentalLab.Controllers
                             ToothArch = arch,
                             ToothNumbers = numbers,
                             ToothPosition = i.ToothPosition,
+                            Teeth = i.Teeth,
                             Notes = i.Notes
                         };
                     }).ToList()
@@ -774,6 +761,42 @@ namespace DentalLab.Controllers
             model.Month = d.Month;
         }
 
+        /// <summary>
+        /// يتحقق من الأسنان المختارة لكل سطر (الأرقام الدولية، الجسور متجاورة في فك واحد، طرفا الجسر ليسا دمية)
+        /// ويوحّد صيغتها. لا يُعتمد على تحقق المتصفح.
+        /// </summary>
+        private void ValidateTeeth(LabCaseFormVM model)
+        {
+            var lineNo = 0;
+            foreach (var item in model.Items)
+            {
+                if (item.IsEmpty) continue;
+                lineNo++;
+                if (string.IsNullOrWhiteSpace(item.Teeth))
+                {
+                    item.Teeth = null;
+                    continue;
+                }
+
+                var parsed = TeethCode.Parse(item.Teeth);
+                if (!parsed.IsValid)
+                    ModelState.AddModelError(string.Empty, $"السطر {lineNo} — الأسنان: " + string.Join(" ", parsed.Errors));
+                else
+                    item.Teeth = parsed.Count == 0 ? null : TeethCode.Serialize(parsed);
+            }
+        }
+
+        /// <summary>نص الأسنان للسطر: من صليب الأسنان إن وُجد، وإلا النص القديم (حالات ما قبل الصليب).</summary>
+        private static string? LineTeethText(LabCaseItemFormVM line)
+        {
+            if (!string.IsNullOrWhiteSpace(line.Teeth))
+                return TeethCode.ToDisplay(line.Teeth);
+            return FormatTooth(line.ToothArch, line.ToothNumbers)
+                   ?? (string.IsNullOrWhiteSpace(line.ToothPosition) ? null : line.ToothPosition.Trim());
+        }
+
+        private static string? Truncate(string? s, int max) => s == null || s.Length <= max ? s : s[..max];
+
         private static string? FormatTooth(string? arch, string? numbers)
         {
             arch = string.IsNullOrWhiteSpace(arch) ? null : arch.Trim();
@@ -807,11 +830,11 @@ namespace DentalLab.Controllers
         private static string? SummarizeTeeth(List<LabCaseItemFormVM> lines)
         {
             var parts = lines
-                .Select(l => FormatTooth(l.ToothArch, l.ToothNumbers))
+                .Select(LineTeethText)
                 .Where(s => !string.IsNullOrWhiteSpace(s))
                 .Distinct()
                 .ToList();
-            return parts.Count == 0 ? null : string.Join(" | ", parts);
+            return parts.Count == 0 ? null : Truncate(string.Join(" | ", parts), 100);
         }
 
         private async Task FillLookups(int? year = null, int? month = null, Guid? doctorId = null, Guid? clinicId = null, string? status = null)

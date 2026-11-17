@@ -32,6 +32,13 @@ namespace DentalLab.Models.Entities
         [Display(Name = "نشط")]
         public bool IsActive { get; set; } = true;
 
+        /// <summary>عملية الاستيراد التي أنشأت هذا السجل (فارغ = أُدخل يدوياً). تُستخدم للتراجع عن الاستيراد.</summary>
+        public Guid? ImportBatchId { get; set; }
+
+        /// <summary>يُسعَّر بالسن (تاج، فينير...): العدد يُملأ تلقائياً من عدد الأسنان المختارة.</summary>
+        [Display(Name = "يُسعَّر بالسن")]
+        public bool PricedPerTooth { get; set; }
+
         public ICollection<LabCaseItem> CaseItems { get; set; } = new List<LabCaseItem>();
 
         public ICollection<DoctorPrice> DoctorPrices { get; set; } = new List<DoctorPrice>();

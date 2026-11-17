@@ -1,0 +1,35 @@
+@* صليب الأسنان للعرض فقط. الموديل = الأسنان بصيغة TeethCode (مثل "13-14p-15,21"). نفس رسم tooth-picker.js. *@
+@using DentalLab.Classes
+@model string?
+@{
+    var selection = TeethCode.Parse(Model);
+    var cells = new Dictionary<int, List<(int Fdi, string Text, bool Bridge, bool Primary)>>
+    {
+        [1] = [], [2] = [], [3] = [], [4] = []
+    };
+    foreach (var g in selection.Groups)
+    {
+        foreach (var t in g.Teeth)
+        {
+            var text = TeethCode.PalmerLabel(t.Fdi);
+            if (t.Pontic && g.IsBridge) text = "(" + text + ")";
+            cells[TeethCode.Quadrant(t.Fdi)].Add((t.Fdi, text, g.IsBridge, TeethCode.IsPrimary(t.Fdi)));
+        }
+    }
+    // الترتيب كما في المجموعات المخزّنة (من يمين المريض إلى يساره على كل فك)
+}
+@if (selection.Count > 0)
+{
+    <span class="teeth-cross" dir="ltr" title="@TeethCode.ToDisplay(selection)">
+        @foreach (var q in new[] { 1, 2, 4, 3 })
+        {
+            var cls = q switch { 1 => "tc-ur", 2 => "tc-ul", 4 => "tc-lr", _ => "tc-ll" };
+            <span class="tc-q @cls">
+                @foreach (var x in cells[q])
+                {
+                    <span class="tc-t@(x.Bridge ? " tc-bridge" : "")@(x.Primary ? " tc-primary" : "")">@x.Text</span>
+                }
+            </span>
+        }
+    </span>
+}

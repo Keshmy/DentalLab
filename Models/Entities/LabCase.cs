@@ -67,6 +67,9 @@ namespace DentalLab.Models.Entities
         [Display(Name = "الشهر")]
         public int Month { get; set; }
 
+        /// <summary>عملية الاستيراد التي أنشأت هذا السجل (فارغ = أُدخل يدوياً). تُستخدم للتراجع عن الاستيراد.</summary>
+        public Guid? ImportBatchId { get; set; }
+
         [StringLength(30)]
         [Display(Name = "الحالة")]
         public string Status { get; set; } = CaseStatus.Normal;

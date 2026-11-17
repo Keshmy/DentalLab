@@ -61,6 +61,7 @@ namespace DentalLab.Controllers
             item.UnitPrice = model.UnitPrice;
             item.UnitCost = model.UnitCost;
             item.IsActive = model.IsActive;
+            item.PricedPerTooth = model.PricedPerTooth;
             item.Modified = DateTime.UtcNow;
 
             _services.Repository.Update(item);

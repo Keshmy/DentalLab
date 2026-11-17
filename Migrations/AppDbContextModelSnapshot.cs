@@ -236,6 +236,9 @@ namespace DentalLab.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("ImportBatchId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime?>("Modified")
                         .HasColumnType("datetime2");
 
@@ -252,6 +255,8 @@ namespace DentalLab.Migrations
                         .HasColumnType("nvarchar(30)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ImportBatchId");
 
                     b.ToTable("Clinics");
                 });
@@ -342,6 +347,9 @@ namespace DentalLab.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("ImportBatchId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime?>("Modified")
                         .HasColumnType("datetime2");
 
@@ -359,6 +367,8 @@ namespace DentalLab.Migrations
                         .HasColumnType("nvarchar(30)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ImportBatchId");
 
                     b.ToTable("Doctors");
                 });
@@ -687,6 +697,52 @@ namespace DentalLab.Migrations
                         });
                 });
 
+            modelBuilder.Entity("DentalLab.Models.Entities.ImportBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("CaseCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ClinicsCreated")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DoctorsCreated")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int>("ItemCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProductsCreated")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UndoneAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UndoneBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Created");
+
+                    b.ToTable("ImportBatches");
+                });
+
             modelBuilder.Entity("DentalLab.Models.Entities.IncomeEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -895,6 +951,9 @@ namespace DentalLab.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<Guid?>("ImportBatchId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid?>("InvoiceId")
                         .HasColumnType("uniqueidentifier");
 
@@ -937,6 +996,8 @@ namespace DentalLab.Migrations
                     b.HasIndex("ClinicId");
 
                     b.HasIndex("DoctorId");
+
+                    b.HasIndex("ImportBatchId");
 
                     b.HasIndex("InvoiceId");
 
@@ -985,6 +1046,10 @@ namespace DentalLab.Migrations
 
                     b.Property<Guid?>("ServiceTypeId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Teeth")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("ToothPosition")
                         .HasMaxLength(100)
@@ -1074,6 +1139,9 @@ namespace DentalLab.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("ImportBatchId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -1085,6 +1153,9 @@ namespace DentalLab.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
+                    b.Property<bool>("PricedPerTooth")
+                        .HasColumnType("bit");
+
                     b.Property<decimal>("UnitCost")
                         .HasColumnType("decimal(18,2)");
 
@@ -1092,6 +1163,8 @@ namespace DentalLab.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ImportBatchId");
 
                     b.ToTable("ServiceTypes");
                 });

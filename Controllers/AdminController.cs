@@ -195,29 +195,13 @@ namespace DentalLab.Controllers
             return RedirectToAction(nameof(Backup));
         }
 
+        /// <summary>
+        /// الاستيراد القديم (ملف أرشيف بتنسيق قديم) استُبدل بصفحة «استيراد الحالات» ذات القالب والمعاينة والتراجع.
+        /// الروابط القديمة تُحوَّل إليها.
+        /// </summary>
         [HttpGet]
         [Authorize(Roles = "Prog,Admin")]
-        public IActionResult ImportArchive() => View();
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Prog,Admin")]
-        [RequestSizeLimit(20_000_000)]
-        public async Task<IActionResult> ImportArchive(IFormFile? file, bool confirm)
-        {
-            var error = ValidateExcelUpload(file, confirm);
-            if (error != null)
-            {
-                ModelState.AddModelError(string.Empty, error);
-                return View();
-            }
-
-            var result = await ImportUploadAsync(file!, stream => _importService.ImportAsync(stream));
-            TempData["SuccessMessage"] =
-                $"تم الاستيراد من «{file!.FileName}»: {result.CasesImported} حالة، {result.ItemsImported} سطر، " +
-                $"{result.PricesImported} سعر، {result.DoctorsCreated} طبيب، {result.ClinicsCreated} عيادة.";
-            return View("ImportResult", result);
-        }
+        public IActionResult ImportArchive() => RedirectToAction("Index", "CaseImport");
 
         /// <summary>
         /// الاستيراد يكون فقط من ملف يختاره المستخدم بنفسه — لا يُستورد ملف الأرشيف المرفق مع التطبيق

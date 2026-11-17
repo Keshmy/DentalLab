@@ -19,6 +19,7 @@ builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<BackupService>();
 builder.Services.AddScoped<ExportService>();
 builder.Services.AddScoped<StatementService>();
+builder.Services.AddScoped<CaseImportService>();
 
 // QuestPDF: الرخصة المجانية (Community) تكفي للمنشآت التي يقل دخلها السنوي عن مليون دولار.
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;

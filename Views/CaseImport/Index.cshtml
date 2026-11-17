@@ -1,0 +1,103 @@
+@model List<ImportBatch>
+@{
+    ViewData["Title"] = "استيراد الحالات";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">استيراد الحالات من Excel</h3>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="fw-bold">1. نزّل القالب واملأه</h5>
+                <p class="text-muted mb-3">
+                    القالب فيه قوائم الأطباء والعيادات والمنتجات المسجلة حالياً، وورقة «تعليمات» فيها شرح ومثال.
+                    كل سطر في ورقة «الحالات» = منتج واحد في حالة.
+                </p>
+                <a asp-action="Template" class="btn btn-success">
+                    <i class="bi bi-file-earmark-excel"></i> تنزيل قالب Excel
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="fw-bold">2. ارفع الملف للمعاينة</h5>
+                <p class="text-muted">لا يُحفظ شيء الآن — ستظهر لك معاينة بالأخطاء والأسماء غير المسجلة قبل التأكيد.</p>
+                <form asp-action="Preview" method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-start flex-wrap">
+                    <input type="file" name="file" class="form-control" style="max-width: 420px"
+                           accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
+                    <button class="btn btn-primary">معاينة</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header fw-bold">سجل الاستيراد</div>
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>الوقت</th>
+                    <th>الملف</th>
+                    <th>المستخدم</th>
+                    <th>الحالات</th>
+                    <th>الأسطر</th>
+                    <th>أطباء / عيادات / منتجات جديدة</th>
+                    <th>الوضع</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var b in Model)
+                {
+                    <tr class="@(b.IsUndone ? "text-muted" : "")">
+                        <td class="text-nowrap">@b.Created.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@b.FileName</td>
+                        <td class="small">@b.UserName</td>
+                        <td>@b.CaseCount</td>
+                        <td>@b.ItemCount</td>
+                        <td>@b.DoctorsCreated / @b.ClinicsCreated / @b.ProductsCreated</td>
+                        <td>
+                            @if (b.IsUndone)
+                            {
+                                <span class="badge bg-secondary">تم التراجع @b.UndoneAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">مُستورد</span>
+                            }
+                        </td>
+                        <td>
+                            @if (!b.IsUndone)
+                            {
+                                <form asp-action="Undo" asp-route-id="@b.Id" method="post"
+                                      onsubmit="return confirm('التراجع عن هذا الاستيراد يحذف حالاته (@b.CaseCount حالة) وأي تعديل تم عليها بعد الاستيراد، والأطباء والعيادات والمنتجات التي أنشأها ولم تُستخدم بعده. متابعة؟');">
+                                    <button class="btn btn-sm btn-outline-danger">تراجع</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="8" class="text-center text-muted">لا توجد عمليات استيراد بعد.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

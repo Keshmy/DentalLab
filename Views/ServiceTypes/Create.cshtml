@@ -22,6 +22,11 @@
         <input asp-for="IsActive" class="form-check-input" />
         <label asp-for="IsActive" class="form-check-label"></label>
     </div>
+    <div class="form-check mb-3">
+        <input asp-for="PricedPerTooth" class="form-check-input" />
+        <label asp-for="PricedPerTooth" class="form-check-label"></label>
+        <div class="form-text">للتيجان والفينير ونحوها: عند اختيار الأسنان في الحالة يصبح العدد = عدد الأسنان (يمكن تعديله).</div>
+    </div>
     <button class="btn btn-primary">حفظ</button>
     <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
 </form>

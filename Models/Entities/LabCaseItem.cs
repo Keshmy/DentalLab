@@ -56,6 +56,11 @@ namespace DentalLab.Models.Entities
         [Display(Name = "مكان الأسنان")]
         public string? ToothPosition { get; set; }
 
+        /// <summary>الأسنان بترقيم FDI مع الجسور، مثل "13-14p-15,21" (انظر TeethCode). فارغ = لم تُحدَّد.</summary>
+        [StringLength(200)]
+        [Display(Name = "الأسنان")]
+        public string? Teeth { get; set; }
+
         [StringLength(300)]
         [Display(Name = "ملاحظات")]
         public string? Notes { get; set; }

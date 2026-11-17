@@ -39,6 +39,10 @@ namespace DentalLab.ViewModels
         public string? ToothPosition { get; set; }
 
         [Display(Name = "علوي / سفلي")]
+        /// <summary>الأسنان المختارة من صليب الأسنان بصيغة TeethCode.</summary>
+        [StringLength(200)]
+        public string? Teeth { get; set; }
+
         public string? ToothArch { get; set; }
 
         [StringLength(80)]
