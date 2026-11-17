@@ -1,0 +1,58 @@
+@using DentalLab.ViewModels.Finance
+@model List<ReconcilingItem>
+@{
+    string CategoryCss(string c) => c == ReconcilingCategory.Timing ? "bg-secondary"
+        : c == ReconcilingCategory.Adjustment ? "bg-warning text-dark" : "bg-danger";
+}
+<div class="table-responsive">
+    <table class="table table-sm table-striped table-bordered mb-0 align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>البند</th>
+                <th>المبلغ</th>
+                <th>التاريخ</th>
+                <th>العمر</th>
+                <th>التصنيف</th>
+                <th>الإجراء</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var i in Model)
+            {
+                <tr>
+                    <td>
+                        @if (i.LinkController != null)
+                        {
+                            var route = new RouteValueDictionary();
+                            if (i.LinkId.HasValue)
+                                route[i.LinkController == "Finance" ? "clinicId" : "id"] = i.LinkId;
+                            <a href="@Url.Action(i.LinkAction, i.LinkController, route)">@i.Description</a>
+                        }
+                        else
+                        {
+                            @i.Description
+                        }
+                        @if (!string.IsNullOrEmpty(i.Reference))
+                        {
+                            <div class="small text-muted">@i.Reference</div>
+                        }
+                    </td>
+                    <td dir="ltr" class="text-end @(i.Amount < 0 ? "text-danger" : "")">@i.Amount.ToString("N2")</td>
+                    <td>@(i.Date?.ToString("dd/MM/yyyy") ?? "—")</td>
+                    <td>
+                        @if (i.AgeDays.HasValue)
+                        {
+                            <span class="badge @i.AgeCss">@i.AgeDays يوم</span>
+                        }
+                        else
+                        {
+                            <span>—</span>
+                        }
+                    </td>
+                    <td><span class="badge @CategoryCss(i.Category)">@i.Category</span></td>
+                    <td class="small">@(i.AgeDays.HasValue ? i.AgeAction : i.Category == ReconcilingCategory.Investigate ? "تحقق ووثّق السبب" : "صحّح السجل")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

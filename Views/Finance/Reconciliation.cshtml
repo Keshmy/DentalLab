@@ -1,0 +1,189 @@
+@using DentalLab.ViewModels.Finance
+@model ReconciliationVM
+@{
+    ViewData["Title"] = "مطابقة الحسابات";
+    string Money(decimal v) => v.ToString("N2");
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <h3 class="fw-bold mb-0">مطابقة الحسابات</h3>
+        <div class="small text-muted">حتى @Model.AsOf.ToString("dd/MM/yyyy HH:mm") — للقراءة فقط، لا تعدّل أي سجل</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Reconciliation" class="btn btn-outline-primary"><i class="bi bi-arrow-clockwise"></i> إعادة الفحص</a>
+        <a asp-action="Index" class="btn btn-outline-secondary">الأرباح والخسائر</a>
+    </div>
+</div>
+
+<div class="alert @(Model.CanClose ? "alert-success" : "alert-danger") d-flex align-items-center gap-2">
+    <i class="bi @(Model.CanClose ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill") fs-4"></i>
+    <div>
+        @if (Model.CanClose)
+        {
+            <strong>كل الأرقام متطابقة.</strong>
+            @if (Model.ItemCount > 0)
+            {
+                <span>توجد @Model.ItemCount بنود تحتاج مراجعة لا تؤثر على المطابقة (مثل حركات بدون حساب).</span>
+            }
+        }
+        else
+        {
+            <strong>يوجد @Model.DifferenceCount فحص غير متطابق.</strong>
+            <span>لا يُقفل الشهر قبل تسوية الفرق أو توثيق سببه.</span>
+        }
+    </div>
+</div>
+
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="small text-muted">فحوص متطابقة</div>
+            <div class="fs-5 fw-bold text-success">@Model.MatchedCount / @Model.Checks.Count</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="small text-muted">يحتاج تحقيقاً</div>
+            <div class="fs-5 fw-bold text-danger">@Model.CountOf(ReconcilingCategory.Investigate)</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="small text-muted">يحتاج تصحيحاً</div>
+            <div class="fs-5 fw-bold text-warning">@Model.CountOf(ReconcilingCategory.Adjustment)</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card"><div class="card-body py-2">
+            <div class="small text-muted">بنود مفتوحة (توقيت)</div>
+            <div class="fs-5 fw-bold">@Model.OpenItems.Count</div>
+        </div></div>
+    </div>
+</div>
+
+@* ===== ملخص الفحوص ===== *@
+<div class="card mb-3">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>الفحص</th>
+                        <th>الطرف الأول</th>
+                        <th>الطرف الثاني</th>
+                        <th>الفرق</th>
+                        <th>النتيجة</th>
+                        <th>بنود</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model.Checks)
+                    {
+                        <tr>
+                            <td><a href="#check-@c.Key" class="fw-bold">@c.Title</a></td>
+                            <td><div class="small text-muted">@c.LeftLabel</div>@(c.IsCount ? c.LeftValue.ToString("N0") : Money(c.LeftValue))</td>
+                            <td><div class="small text-muted">@c.RightLabel</div>@(c.IsCount ? c.RightValue.ToString("N0") : Money(c.RightValue))</td>
+                            <td class="fw-bold @(c.IsMatched ? "" : "text-danger")" dir="ltr">@(c.IsCount ? c.Difference.ToString("N0") : Money(c.Difference))</td>
+                            <td>
+                                @if (c.IsMatched)
+                                {
+                                    <span class="badge bg-success">متطابق</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">فرق</span>
+                                }
+                            </td>
+                            <td>@c.Items.Count</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@* ===== تفاصيل كل فحص ===== *@
+@foreach (var c in Model.Checks)
+{
+    <div class="card mb-3 @(c.IsMatched ? "" : "border-danger")" id="check-@c.Key">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <span class="fw-bold">@c.Title</span>
+                @if (c.IsMatched)
+                {
+                    <span class="badge bg-success ms-1">متطابق</span>
+                }
+                else
+                {
+                    <span class="badge bg-danger ms-1">فرق @(c.IsCount ? c.Difference.ToString("N0") : Money(c.Difference))</span>
+                }
+            </div>
+            @if (c.FixController != null)
+            {
+                <a href="@Url.Action(c.FixAction, c.FixController)" class="btn btn-sm btn-outline-primary">@c.FixLabel</a>
+            }
+        </div>
+        <div class="card-body">
+            <p class="small text-muted mb-2">@c.Description</p>
+
+            @if (!c.IsCount)
+            {
+                <table class="table table-sm mb-3" style="max-width: 520px;">
+                    <tr><td>@c.LeftLabel</td><td class="text-end">@Money(c.LeftValue)</td></tr>
+                    <tr><td>@c.RightLabel</td><td class="text-end">@Money(c.RightValue)</td></tr>
+                    <tr class="fw-bold @(c.IsMatched ? "table-success" : "table-danger")">
+                        <td>الفرق</td><td class="text-end" dir="ltr">@Money(c.Difference)</td>
+                    </tr>
+                </table>
+            }
+
+            @if (c.Items.Count == 0)
+            {
+                <div class="text-success small"><i class="bi bi-check2"></i> لا توجد بنود.</div>
+            }
+            else
+            {
+                <partial name="_ReconcilingItems" model="c.Items" />
+            }
+        </div>
+    </div>
+}
+
+@* ===== البنود المفتوحة ===== *@
+<div class="card mb-3" id="open-items">
+    <div class="card-header fw-bold">بنود مفتوحة — فروق توقيت وأعمارها</div>
+    <div class="card-body">
+        <p class="small text-muted mb-2">
+            إيرادات لم تُستلم ومصروفات لم تُدفع. لا تُعد خطأً، لكن ما تجاوز 60 يوماً يحتاج متابعة، وما تجاوز 90 يوماً يُصعَّد للإدارة.
+        </p>
+        @if (Model.OpenItems.Count == 0)
+        {
+            <div class="text-success small"><i class="bi bi-check2"></i> لا توجد بنود مفتوحة.</div>
+        }
+        else
+        {
+            <div class="row g-2 mb-2">
+                @foreach (var bucket in new[] { "0–30", "31–60", "61–90", "+90" })
+                {
+                    var inBucket = Model.OpenItems.Where(i => i.AgeBucket == bucket).ToList();
+                    <div class="col-6 col-md-3">
+                        <div class="border rounded p-2">
+                            <div class="small text-muted">@bucket يوم</div>
+                            <div class="fw-bold">@inBucket.Count بند — @Money(inBucket.Sum(i => i.Amount))</div>
+                        </div>
+                    </div>
+                }
+            </div>
+            <partial name="_ReconcilingItems" model="Model.OpenItems" />
+        }
+    </div>
+</div>
+
+<div class="small text-muted mb-4">
+    التصنيف: <span class="badge bg-secondary">توقيت</span> يزول وحده ·
+    <span class="badge bg-warning text-dark">يحتاج تصحيحاً</span> عدّل السجل المرتبط ·
+    <span class="badge bg-danger">يحتاج تحقيقاً</span> فرق غير مفسَّر، يُوثَّق سببه.
+    يُعرض حتى 100 بند لكل فحص، الأقدم أولاً.
+</div>

@@ -111,6 +111,11 @@ namespace DentalLab.Controllers
             return View(vm);
         }
 
+        /// <summary>مطابقة الحسابات: يقارن أرقام الشاشات المالية ببعضها ويسرد بنود أي فرق (للقراءة فقط).</summary>
+        [HttpGet]
+        public async Task<IActionResult> Reconciliation([FromServices] ReconciliationService reconciliation)
+            => View(await reconciliation.BuildAsync());
+
         /// <summary>كشف حساب مركز: الأعمال والتحصيلات والرصيد الدائن برصيد متحرك.</summary>
         [HttpGet]
         public async Task<IActionResult> Statement(Guid? clinicId, DateTime? from, DateTime? to, [FromServices] StatementService statements)

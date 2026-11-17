@@ -134,6 +134,12 @@ DentalLab/
 - Tracked saves are logged automatically. Bulk `ExecuteUpdate/ExecuteDelete` bypass it — log those explicitly (see `LabCasesController.AddEditAuditAsync`).
 - Bulk imports set `AppDbContext.AuditEnabled = false`.
 
+### Reconciliation (مطابقة الحسابات)
+
+- UI: المالية → مطابقة الحسابات (`FinanceController.Reconciliation`, `Services/ReconciliationService.cs`). Read-only.
+- Compares numbers that must agree, using the same services the screens use: accounts total ↔ cash ledger, receivables ↔ clinic statements, P&L revenue/collections ↔ receivables, invoice total ↔ its lines ↔ its cases, invoice status ↔ received payments, P&L write-offs ↔ loan balances.
+- Each difference is explained by items classed توقيت / يحتاج تصحيحاً / يحتاج تحقيقاً with age buckets (0–30, 31–60, 61–90, +90). If you change a finance formula, keep this page in step with it.
+
 ### Case import (استيراد الحالات)
 
 - UI: الإعدادات → استيراد الحالات (`CaseImportController`, `Services/CaseImportService.cs`).
