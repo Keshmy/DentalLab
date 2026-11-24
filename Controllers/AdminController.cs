@@ -55,6 +55,10 @@ namespace DentalLab.Controllers
                 MonthUnits = monthRow?.Units ?? 0,
                 MonthRemakeUnits = monthRow?.RemakeUnits ?? 0,
                 MonthRevenue = monthRow?.Revenue ?? 0m,
+                MonthInvoiced = await _context.LabCaseItems
+                    .Where(i => i.LabCase!.Year == now.Year && i.LabCase.Month == now.Month
+                                && i.LabCase.Status != CaseStatus.Cancelled && i.LabCase.InvoiceId != null)
+                    .SumAsync(i => (decimal?)(i.Quantity * i.UnitPrice)) ?? 0m,
                 MonthCollections = monthRow?.Collections ?? 0m,
                 MonthExpenses = monthRow?.OperatingExpenses ?? 0m,
                 MonthNetProfit = monthRow?.NetProfit ?? 0m,

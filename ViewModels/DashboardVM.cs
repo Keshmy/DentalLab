@@ -16,6 +16,8 @@ namespace DentalLab.ViewModels
 
         // ===== مال الشهر =====
         public decimal MonthRevenue { get; set; }
+        /// <summary>الجزء من أعمال الشهر الذي دخل فعلاً في فاتورة.</summary>
+        public decimal MonthInvoiced { get; set; }
         public decimal MonthCollections { get; set; }
         public decimal MonthExpenses { get; set; }
         public decimal MonthNetProfit { get; set; }

@@ -1,0 +1,99 @@
+@using DentalLab.Services
+@model List<RepriceLine>
+@{
+    ViewData["Title"] = "تحديث أسعار الحالات غير المفوترة";
+    var scope = (RepriceScope)ViewBag.Scope;
+    var returnUrl = (string?)ViewBag.ReturnUrl;
+    var cases = Model.Select(l => l.CaseId).Distinct().Count();
+    var allChecked = Model.All(l => l.FollowedOldPrice);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h3 class="fw-bold mb-0">تحديث أسعار الحالات غير المفوترة</h3>
+    @if (returnUrl != null)
+    {
+        <a href="@returnUrl" class="btn btn-outline-secondary">رجوع</a>
+    }
+</div>
+<p class="text-muted mb-3">@ViewBag.ScopeTitle</p>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-success">
+        كل الحالات غير المفوترة في هذا النطاق تحمل السعر الحالي من قائمة الأسعار — لا شيء يحتاج تحديثاً.
+    </div>
+}
+else
+{
+    <div class="alert alert-info small">
+        هذه أسطر في حالات <b>غير مفوترة</b> سعرها يختلف عن قائمة الأسعار الحالية. اختر ما تريد تحديثه ثم اضغط «تحديث المختار».
+        <br />الأسطر المحدَّدة مسبقاً سعرها هو السعر القديم الذي عدّلته للتو. الأسطر غير المحدَّدة سعرها مختلف عن السعر القديم
+        — قد يكون سعراً متفقاً عليه، فحدِّدها فقط إن كنت متأكداً.
+        <br />لا تظهر هنا: الحالات المفوترة، الملغاة، المجانية، المدفوعة، الإعادات المجانية، والأسطر التي كُتب سعرها يدوياً (خصم أو اتفاق خاص).
+    </div>
+
+    <form asp-action="Apply" method="post">
+        <input type="hidden" name="serviceTypeId" value="@scope.ServiceTypeId" />
+        <input type="hidden" name="doctorId" value="@scope.DoctorId" />
+        <input type="hidden" name="clinicId" value="@scope.ClinicId" />
+        <input type="hidden" name="returnUrl" value="@returnUrl" />
+
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+                <b>@Model.Count</b> سطر في <b>@cases</b> حالة —
+                فرق الإجمالي إن حُدِّث الكل: <b dir="ltr">@Model.Sum(l => l.Difference).ToString("N2")</b>
+            </div>
+            <button class="btn btn-primary" onclick="return confirm('تحديث أسعار الأسطر المختارة؟');">تحديث المختار</button>
+        </div>
+
+        <table class="table table-bordered table-sm align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th style="width:36px"><input type="checkbox" id="checkAll" @(allChecked ? "checked" : "") title="تحديد الكل" /></th>
+                    <th>رقم</th>
+                    <th>الاسم</th>
+                    <th>التاريخ</th>
+                    <th>الطبيب</th>
+                    <th>المركز</th>
+                    <th>المنتج</th>
+                    <th>العدد</th>
+                    <th>السعر الحالي</th>
+                    <th>السعر الجديد</th>
+                    <th>الفرق</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var l in Model)
+                {
+                    <tr>
+                        <td><input type="checkbox" name="itemIds" value="@l.ItemId" class="js-line" @(l.FollowedOldPrice ? "checked" : "") /></td>
+                        <td><a asp-controller="LabCases" asp-action="Details" asp-route-id="@l.CaseId" target="_blank">@l.CaseNumber</a></td>
+                        <td>@l.PatientName</td>
+                        <td>@l.ReceivedDate?.ToString("yyyy/M/d")</td>
+                        <td>@l.DoctorName</td>
+                        <td>@l.ClinicName</td>
+                        <td>@l.ProductName</td>
+                        <td>@l.Quantity</td>
+                        <td>
+                            @l.OldPrice.ToString("N2")
+                            @if (!l.FollowedOldPrice)
+                            {
+                                <span class="badge bg-warning text-dark" title="لا يطابق السعر القديم في القائمة">قد يكون متفقاً عليه</span>
+                            }
+                        </td>
+                        <td class="fw-bold">@l.NewPrice.ToString("N2")</td>
+                        <td dir="ltr" class="@(l.Difference > 0 ? "text-success" : "text-danger")">@l.Difference.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </form>
+}
+
+@section Scripts {
+    <script>
+        $(function () {
+            $('#checkAll').on('change', function () { $('.js-line').prop('checked', this.checked); });
+        });
+    </script>
+}

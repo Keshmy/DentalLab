@@ -25,17 +25,6 @@
             return (isFinite(n) ? n : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
-        function remakeSequenceFor(row) {
-            var n = 0;
-            var rows = body.querySelectorAll('.item-row');
-            for (var i = 0; i < rows.length; i++) {
-                if (!rows[i].querySelector('.js-remake').checked) continue;
-                n++;
-                if (rows[i] === row) return n;
-            }
-            return Math.max(n, 1);
-        }
-
         function recalc() {
             var totalQty = 0, totalSum = 0;
             body.querySelectorAll('.item-row').forEach(function (row) {
@@ -67,76 +56,50 @@
             renderTeeth(row);
 
             if (isRemake || (statusSelect && statusSelect.value === 'إعادة')) {
-                var check = row.querySelector('.js-remake');
-                check.checked = true;
+                row.querySelector('.js-remake').checked = true;
                 applyRemake(row);
+                // زر «+ إعادة» يقترح مجانية — والمستخدم يغيّرها بإلغاء العلامة
+                if (isRemake) setFree(row, true);
             }
             recalc();
             return row;
         }
 
+        // الإعادة لا تغيّر السعر بنفسها: المستخدم يقرر بعلامة «مجانية» (أو بكتابة السعر).
         function applyRemake(row) {
             var isRemake = row.querySelector('.js-remake').checked;
             var reason = row.querySelector('.js-reason');
             reason.disabled = !isRemake;
+            row.querySelector('.js-free-wrap').style.display = isRemake ? '' : 'none';
             if (!isRemake) {
                 reason.value = '';
-                recalc();
-                return;
+                if (row.querySelector('.js-free').checked) setFree(row, false);
             }
-            fetchRemakePrice(row);
+            recalc();
         }
 
-        function fetchRemakePrice(row) {
-            var serviceId = row.querySelector('.js-service').value;
-            if (!serviceId) {
-                row.querySelector('.js-price').value = 0;
+        function isFreeRemake(row) {
+            return row.querySelector('.js-remake').checked && row.querySelector('.js-free').checked;
+        }
+
+        function setFree(row, free) {
+            var price = row.querySelector('.js-price');
+            row.querySelector('.js-free').checked = free;
+            if (free) {
+                if ((parseFloat(price.value) || 0) > 0) row.dataset.paidPrice = price.value;
+                price.value = 0;
                 recalc();
-                return;
+            } else if (row.dataset.paidPrice) {
+                price.value = row.dataset.paidPrice;
+                recalc();
+            } else {
+                fetchPrice(row);
             }
-
-            var url = '@Url.Action("RemakePrice", "LabCases")'
-                + '?serviceTypeId=' + encodeURIComponent(serviceId)
-                + '&reason=' + encodeURIComponent(row.querySelector('.js-reason').value || '');
-
-            var caseId = caseIdInput && caseIdInput.value && caseIdInput.value !== '00000000-0000-0000-0000-000000000000'
-                ? caseIdInput.value : '';
-            if (caseId) url += '&caseId=' + encodeURIComponent(caseId);
-            if (doctorSelect && doctorSelect.value) url += '&doctorId=' + encodeURIComponent(doctorSelect.value);
-            if (clinicSelect && clinicSelect.value) url += '&clinicId=' + encodeURIComponent(clinicSelect.value);
-
-            // عدد الإعادات في النموذج الحالي (قبل الاعتماد على قاعدة البيانات فقط)
-            var localSeq = remakeSequenceFor(row);
-            url += '&localSequence=' + encodeURIComponent(String(localSeq));
-
-            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                .then(function (r) { return r.ok ? r.json() : null; })
-                .then(function (data) {
-                    if (!data) {
-                        row.querySelector('.js-price').value = localSeq >= 2 ? row.querySelector('.js-price').value : 0;
-                        recalc();
-                        return;
-                    }
-                    row.querySelector('.js-price').value = data.price;
-                    if (data.explanation) {
-                        row.setAttribute('title', data.explanation);
-                    }
-                    recalc();
-                })
-                .catch(function () {
-                    row.querySelector('.js-price').value = 0;
-                    recalc();
-                });
         }
 
         function fetchPrice(row) {
             var serviceId = row.querySelector('.js-service').value;
             if (!serviceId) return;
-
-            if (row.querySelector('.js-remake').checked) {
-                fetchRemakePrice(row);
-                // still fetch cost
-            }
 
             var url = '@Url.Action("ServicePrice", "LabCases")' + '?id=' + encodeURIComponent(serviceId);
             if (doctorSelect && doctorSelect.value) {
@@ -151,7 +114,7 @@
                 .then(function (data) {
                     if (!data) return;
                     row.querySelector('.js-cost').value = data.cost;
-                    if (!row.querySelector('.js-remake').checked) {
+                    if (!isFreeRemake(row)) {
                         row.querySelector('.js-price').value = data.price;
                     }
                     recalc();
@@ -168,6 +131,7 @@
         function updateStatusHelp() {
             if (!statusSelect || !statusHelpEl) return;
             statusHelpEl.textContent = statusHelp[statusSelect.value] || '';
+            // حالة «إعادة»: تُعلَّم الأسطر إعادة فقط — بدون تصفير قيمتها
             if (statusSelect.value === 'إعادة') {
                 body.querySelectorAll('.item-row').forEach(function (row) {
                     if (!row.querySelector('.js-service').value) return;
@@ -175,8 +139,6 @@
                     if (!check.checked) {
                         check.checked = true;
                         applyRemake(row);
-                    } else {
-                        fetchRemakePrice(row);
                     }
                 });
             }
@@ -257,11 +219,6 @@
             } else {
                 row.remove();
             }
-            // أعد تسعير الإعادات المتبقية بعد الحذف
-            body.querySelectorAll('.item-row').forEach(function (r) {
-                if (r.querySelector('.js-remake').checked && r.querySelector('.js-service').value)
-                    fetchRemakePrice(r);
-            });
             recalc();
         });
 
@@ -270,8 +227,7 @@
             if (!row) return;
             if (e.target.classList.contains('js-service')) fetchPrice(row);
             if (e.target.classList.contains('js-remake')) applyRemake(row);
-            if (e.target.classList.contains('js-reason') && row.querySelector('.js-remake').checked)
-                fetchRemakePrice(row);
+            if (e.target.classList.contains('js-free')) setFree(row, e.target.checked);
         });
 
         // Disabled remake-reason selects don't post — enable them right before submit.
@@ -283,6 +239,15 @@
         }
 
         body.addEventListener('input', function (e) {
+            if (e.target.classList.contains('js-price')) {
+                var row = e.target.closest('.item-row');
+                // كتابة سعر على الإعادة تعني أنها على الطبيب، وصفر يعني مجانية
+                if (row && row.querySelector('.js-remake').checked) {
+                    var v = parseFloat(e.target.value) || 0;
+                    row.querySelector('.js-free').checked = v === 0;
+                    if (v > 0) row.dataset.paidPrice = e.target.value;
+                }
+            }
             if (e.target.classList.contains('js-qty') || e.target.classList.contains('js-price')) recalc();
         });
 

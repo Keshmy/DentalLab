@@ -14,6 +14,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped(typeof(IUnitOfWork<>), typeof(UnitOfWork<>));
 builder.Services.AddScoped<ExcelImportService>();
 builder.Services.AddScoped<PricingService>();
+builder.Services.AddScoped<RepriceService>();
 builder.Services.AddScoped<FinanceService>();
 builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<BackupService>();

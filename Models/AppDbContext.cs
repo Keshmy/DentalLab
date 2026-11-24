@@ -57,6 +57,7 @@ namespace DentalLab.Models
         public DbSet<Expense> Expenses { get; set; }
         public DbSet<IncomeEntry> IncomeEntries { get; set; }
         public DbSet<LoanTransaction> LoanTransactions { get; set; }
+        public DbSet<AccountTransfer> AccountTransfers { get; set; }
         public DbSet<BackupSettings> BackupSettings { get; set; }
         public DbSet<ClinicCreditEntry> ClinicCreditEntries { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
@@ -83,6 +84,7 @@ namespace DentalLab.Models
             modelBuilder.Entity<Expense>().Property(x => x.Id).HasDefaultValueSql("NEWID()");
             modelBuilder.Entity<IncomeEntry>().Property(x => x.Id).HasDefaultValueSql("NEWID()");
             modelBuilder.Entity<LoanTransaction>().Property(x => x.Id).HasDefaultValueSql("NEWID()");
+            modelBuilder.Entity<AccountTransfer>().Property(x => x.Id).HasDefaultValueSql("NEWID()");
             modelBuilder.Entity<BackupSettings>().Property(x => x.Id).ValueGeneratedNever();
 
             modelBuilder.Entity<BackupSettings>().HasData(new BackupSettings
@@ -240,6 +242,19 @@ namespace DentalLab.Models
                 .WithMany()
                 .HasForeignKey(l => l.FinancialAccountId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            // تحويلات الحسابات: لا يُحذف حساب له تحويلات (الكنترولر يمنع ذلك برسالة واضحة)
+            modelBuilder.Entity<AccountTransfer>()
+                .HasOne(t => t.FromAccount)
+                .WithMany()
+                .HasForeignKey(t => t.FromAccountId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<AccountTransfer>()
+                .HasOne(t => t.ToAccount)
+                .WithMany()
+                .HasForeignKey(t => t.ToAccountId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<ClinicCreditEntry>()
                 .HasOne(c => c.Clinic)

@@ -5,7 +5,11 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h4 class="fw-bold mb-0">أسعار العيادة: @Model.ClinicName</h4>
-    <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+    <div class="d-flex gap-2">
+        <a asp-controller="Reprice" asp-action="Index" asp-route-clinicId="@Model.ClinicId"
+           asp-route-returnUrl="@Url.Action("Manage", new { id = Model.ClinicId })" class="btn btn-outline-primary">مراجعة الحالات غير المفوترة</a>
+        <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+    </div>
 </div>
 
 <div class="alert alert-light border">
@@ -13,6 +17,8 @@
     إن كتبت سعراً مساوياً للسعر العام فسيُحذف التخصيص تلقائياً.
     <br />
     سعر الطبيب الخاص له أولوية أعلى من سعر العيادة عند إدخال الحالة.
+    <br />
+    الحالات <strong>المفوترة</strong> لا تتغير أبداً. بعد الحفظ تُعرض الحالات غير المفوترة التي تتأثر لتختار ما يُحدَّث سعره.
 </div>
 
 <form asp-action="Manage" asp-route-id="@Model.ClinicId" method="post">

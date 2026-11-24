@@ -1,6 +1,7 @@
 using DentalLab.Classes;
 using DentalLab.Models.Entities;
 using DentalLab.Models.Interfaces;
+using DentalLab.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -45,7 +46,7 @@ namespace DentalLab.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid id, ServiceType model)
+        public async Task<IActionResult> Edit([FromServices] RepriceService reprice, Guid id, ServiceType model)
         {
             if (id != model.Id)
                 return View("NotFound");
@@ -55,6 +56,9 @@ namespace DentalLab.Controllers
             var item = await _services.Repository.GetByIdAsync(id);
             if (item == null)
                 return View("NotFound");
+
+            var oldPrice = item.UnitPrice;
+            var priceChanged = oldPrice != model.UnitPrice;
 
             // نحدّث الحقول المحرَّرة فقط حتى لا يُمحى تاريخ الإنشاء
             item.Name = model.Name;
@@ -67,6 +71,16 @@ namespace DentalLab.Controllers
             _services.Repository.Update(item);
             await _services.SaveAsync();
             TempData["SuccessMessage"] = "تم حفظ نوع العمل";
+
+            // السعر العام تغيّر: نعرض الحالات غير المفوترة التي تتأثر (ما ليس لها سعر طبيب/عيادة خاص)
+            if (priceChanged && (await reprice.PreviewAsync(new RepriceScope { ServiceTypeId = id })).Count > 0)
+            {
+                TempData[RepricePrevious.TempDataKey] = RepricePrevious.Encode(
+                    new Dictionary<Guid, HashSet<decimal>> { [id] = [oldPrice] });
+                TempData["SuccessMessage"] = "تم حفظ نوع العمل. راجع الحالات غير المفوترة التي تتأثر بالسعر الجديد.";
+                return RedirectToAction("Index", "Reprice", new { serviceTypeId = id, returnUrl = Url.Action(nameof(Index)) });
+            }
+
             return RedirectToAction(nameof(Index));
         }
 

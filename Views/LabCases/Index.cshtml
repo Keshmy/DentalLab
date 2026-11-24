@@ -84,6 +84,16 @@
     </div>
 </div>
 
+<div class="d-flex justify-content-end mb-2">
+    <div class="dropdown">
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="colToggleBtn"
+                data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+            <i class="bi bi-layout-three-columns"></i> الأعمدة
+        </button>
+        <div class="dropdown-menu dropdown-menu-end p-2" aria-labelledby="colToggleBtn" id="colToggleMenu" style="min-width:200px"></div>
+    </div>
+</div>
+
 <table id="table1" class="table table-striped table-bordered table-hover w-100">
     <thead>
         <tr>
@@ -94,6 +104,8 @@
             <th>المنتجات</th>
             <th>الوحدات</th>
             <th>التاريخ</th>
+            <th>التسليم</th>
+            <th>الملاحظات</th>
             <th>الإجمالي</th>
             <th>الحالة</th>
             <th>الفاتورة</th>
@@ -116,7 +128,9 @@
                     }
                 </td>
                 <td>@item.Units</td>
-                <td>@item.ReceivedDate?.ToString("yyyy/M/d")</td>
+                <td data-order="@item.ReceivedDate?.ToString("yyyyMMdd")">@item.ReceivedDate?.ToString("yyyy/M/d")</td>
+                <td data-order="@item.DeliveryDate?.ToString("yyyyMMdd")">@item.DeliveryDate?.ToString("yyyy/M/d")</td>
+                <td class="small text-wrap" style="max-width:240px;white-space:pre-line">@item.Notes</td>
                 <td data-order="@item.Total">@item.Total.ToString("N2")</td>
                 <td>@item.Status</td>
                 <td>
@@ -147,4 +161,42 @@
 
 @section Scripts {
     <partial name="Partial/_datatables-js" />
+    <script>
+        // إظهار/إخفاء أعمدة جدول الحالات — الاختيار يُحفظ في هذا المتصفح.
+        $(function () {
+            var table = $('#table1').DataTable();
+            // التهيئة تنتظر ملف اللغة، فننتظرها قبل لمس الأعمدة
+            table.ready(function () { initColumnToggles(table); });
+        });
+
+        function initColumnToggles(table) {
+            var key = 'labcases.hiddenColumns.v1';
+            var defaultsHidden = [7];            // التسليم مخفي افتراضياً
+            var lastCol = table.columns().count() - 1;   // عمود الأزرار يبقى دائماً
+            var hidden;
+            try { hidden = JSON.parse(localStorage.getItem(key)); } catch (e) { hidden = null; }
+            if (!Array.isArray(hidden)) hidden = defaultsHidden;
+
+            var menu = $('#colToggleMenu');
+            table.columns().every(function (i) {
+                if (i === lastCol) return;
+                var title = $(this.header()).text().trim();
+                var visible = hidden.indexOf(i) === -1;
+                this.visible(visible, false);
+                // label بسيط بدل form-check: تنسيق القالب لـ form-check يُركّب المربع فوق النص
+                menu.append(
+                    $('<label class="dropdown-item d-flex align-items-center gap-2 py-1 m-0" style="cursor:pointer">').append(
+                        $('<input type="checkbox">').val(i).prop('checked', visible),
+                        $('<span>').text(title)));
+            });
+            table.columns.adjust().draw(false);
+
+            menu.on('change', 'input', function () {
+                var i = +this.value;
+                table.column(i).visible(this.checked);
+                hidden = menu.find('input:not(:checked)').map(function () { return +this.value; }).get();
+                try { localStorage.setItem(key, JSON.stringify(hidden)); } catch (e) { }
+            });
+        }
+    </script>
 }

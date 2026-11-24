@@ -140,6 +140,19 @@ DentalLab/
 - Compares numbers that must agree, using the same services the screens use: accounts total ↔ cash ledger, receivables ↔ clinic statements, P&L revenue/collections ↔ receivables, invoice total ↔ its lines ↔ its cases, invoice status ↔ received payments, P&L write-offs ↔ loan balances.
 - Each difference is explained by items classed توقيت / يحتاج تصحيحاً / يحتاج تحقيقاً with age buckets (0–30, 31–60, 61–90, +90). If you change a finance formula, keep this page in step with it.
 
+### Repricing uninvoiced cases (تحديث أسعار الحالات غير المفوترة)
+
+- Invoiced lines never change. After saving a general price (`ServiceTypes/Edit`) or a doctor/clinic price sheet, if uninvoiced lines differ from the list, the user is sent to `Reprice/Index` to review and confirm (`Services/RepriceService.cs`). Nothing changes without confirmation.
+- Skipped: invoiced, cancelled, free, paid cases; all remake lines; lines without a product; `LabCaseItem.IsManualPrice` lines.
+- `IsManualPrice` is set when a saved price differs from the list price (case form and import). Re-saving a case without touching the price keeps the flag.
+- Lines whose price equals the price just replaced are pre-ticked; other differences start unticked ("قد يكون متفقاً عليه"). Each updated case gets a change-log entry.
+
+### Account transfers (التحويل بين الحسابات)
+
+- `AccountTransfer` (from, to, amount, date). UI: الحسابات → تحويل بين الحسابات, plus optional "fund from account" on the new-account form.
+- Account balance = opening + in − out + transfers in − transfers out (`FinanceService.GetAccountBalancesAsync`). Transfers never change the cash total or profit; the ledger lists them as info rows with no in/out.
+- Over-balance transfers are blocked; cancelling is refused if the target account no longer holds the amount. Accounts with transfers cannot be deleted.
+
 ### Case import (استيراد الحالات)
 
 - UI: الإعدادات → استيراد الحالات (`CaseImportController`, `Services/CaseImportService.cs`).
@@ -179,7 +192,7 @@ Implementation: `Services/PricingService.cs`.
 ### Lab cases
 
 - Doctor **and** clinic are required on create/edit.
-- Case lines can mark **remake** (`IsRemake`). Remake pricing/counting is special-cased in pricing/finance.
+- Case lines can mark **remake** (`IsRemake`). The user decides the remake price: marking a line as remake never changes its price; the form's «مجانية» box sets it to 0 (free for the doctor). There is no automatic first-free rule. Case status «إعادة» only flags lines as remakes. Finance treats a remake with price 0 as a free remake (loss at list price).
 - Tooth arch: Upper / Lower per line where applicable (`ToothArch`).
 - Do not soft-delete cases unless product owners change that decision (current code uses hard delete when allowed).
 - Do not delete a doctor/clinic that still has related cases (controllers guard this).

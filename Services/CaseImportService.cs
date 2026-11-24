@@ -148,7 +148,7 @@ namespace DentalLab.Services
                 "• الجسر: أرقام الأسنان المتجاورة بينها «-» والدمية يُضاف لها p، مثل 34-35p-36. عدة أسنان مفردة: 11 21.",
                 "• المنتج المسعّر بالسن: إذا تُرك «العدد» فارغاً يصبح العدد = عدد الأسنان (الجسر من 3 أسنان = 3).",
                 "• السعر فارغ = يُؤخذ من قائمة الأسعار. الحالة «مجاني» = صفر.",
-                "• الإعادة: الأولى لكل حالة على المعمل (مجانية)، والثانية وما بعدها على الطبيب، و«خطأ المعمل» مجانية دائماً.",
+                "• الإعادة: سعرها كما في عمود السعر؛ اتركه فارغاً أو 0 لتكون مجانية للطبيب.",
                 "• لا يُحفظ شيء قبل الضغط على «تأكيد الاستيراد» في صفحة المعاينة، ويمكن التراجع عن الاستيراد لاحقاً.",
                 "",
                 "مثال (لا تنسخه إلى ورقة الحالات كما هو):"
@@ -609,13 +609,15 @@ namespace DentalLab.Services
                         price = 0m;
                     else if (isRemake)
                     {
-                        // نفس قاعدة نموذج الحالة: الأولى مجانية، الثانية فما بعد على الطبيب، وخطأ المعمل مجاني.
+                        // مثل نموذج الحالة: المستخدم يحدد — السعر من الملف، وبدون سعر = مجانية.
                         remakeSequence++;
-                        var chargeable = remakeSequence >= 2 && row.RemakeReason != RemakeReason.LabFault;
-                        price = chargeable ? row.Price ?? Catalog() : 0m;
+                        price = row.Price ?? 0m;
                     }
                     else
                         price = row.Price ?? Catalog();
+
+                    // سعر من الملف يختلف عن قائمة الأسعار = سعر يدوي لا يغيّره تحديث الأسعار
+                    var isManual = !isRemake && service != null && price != 0m && row.Price.HasValue && price != Catalog();
 
                     labCase.Items.Add(new LabCaseItem
                     {
@@ -626,6 +628,7 @@ namespace DentalLab.Services
                         // المنتج المسعّر بالسن: العدد من الأسنان إذا لم يُكتب العدد في الملف
                         Quantity = !row.QuantityGiven && row.TeethCount > 0 && service?.PricedPerTooth == true ? row.TeethCount : row.Quantity,
                         UnitPrice = price,
+                        IsManualPrice = isManual,
                         UnitCost = service?.UnitCost ?? 0m,
                         IsRemake = isRemake,
                         RemakeReason = isRemake ? row.RemakeReason : null,

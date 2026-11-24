@@ -145,6 +145,8 @@
                         <td><input name="Items[@i].ProductName" value="@item.ProductName" class="form-control" placeholder="اختياري" /></td>
                         <td>
                             <input type="hidden" name="Items[@i].Teeth" value="@item.Teeth" class="js-teeth" />
+                            <input type="hidden" name="Items[@i].OriginalUnitPrice" value="@item.OriginalUnitPrice" />
+                            <input type="hidden" name="Items[@i].IsManualPrice" value="@(item.IsManualPrice ? "true" : "false")" />
                             <input type="hidden" name="Items[@i].ToothPosition" value="@(string.IsNullOrWhiteSpace(item.Teeth) ? item.ToothPosition : null)" class="js-teeth-legacy" />
                             <button type="button" class="teeth-open-btn js-teeth-open" title="اختيار الأسنان"></button>
                             @if (string.IsNullOrWhiteSpace(item.Teeth) && !string.IsNullOrWhiteSpace(item.ToothPosition))
@@ -167,6 +169,10 @@
                                 }
                                 <input type="hidden" name="Items[@i].IsRemake" value="false" />
                                 <label class="form-check-label" for="remake_@i">إعادة</label>
+                            </div>
+                            <div class="form-check mb-1 js-free-wrap" style="@(item.IsRemake ? "" : "display:none")">
+                                <input type="checkbox" class="form-check-input js-free" id="free_@i" @(item.IsRemake && item.UnitPrice == 0 ? "checked" : "") />
+                                <label class="form-check-label" for="free_@i">مجانية</label>
                             </div>
                             <select name="Items[@i].RemakeReason" class="form-select form-select-sm js-reason" @(item.IsRemake ? null : "disabled")>
                                 <option value="">— السبب —</option>
@@ -204,7 +210,9 @@
         <br />
         الأسنان: اضغط على صليب الأسنان في السطر لاختيارها (مع الجسور والأسنان اللبنية). المنتجات المسعّرة بالسن يُملأ عددها تلقائياً.
         <br />
-        الإعادة: الأولى على المعمل بسعر صفر، والثانية وما بعدها على الطبيب — ويمكن تغيير السعر يدوياً.
+        الإعادة: علامة «إعادة» لا تغيّر السعر. أنت تقرر: اختر «مجانية» لتكون بلا مقابل للطبيب، أو اترك السعر ليُحسب عليه.
+        <br />
+        لإعادة عمل سابق مع إبقاء قيمة العمل الأصلي: استخدم «+ إعادة» لإضافة سطر جديد بدل تعليم السطر الأصلي.
     </div>
 </div>
 
@@ -233,6 +241,10 @@
                 <input type="checkbox" name="Items[__i__].IsRemake" value="true" class="form-check-input js-remake" />
                 <input type="hidden" name="Items[__i__].IsRemake" value="false" />
                 <label class="form-check-label">إعادة</label>
+            </div>
+            <div class="form-check mb-1 js-free-wrap" style="display:none">
+                <input type="checkbox" class="form-check-input js-free" />
+                <label class="form-check-label">مجانية</label>
             </div>
             <select name="Items[__i__].RemakeReason" class="form-select form-select-sm js-reason" disabled>
                 <option value="">— السبب —</option>

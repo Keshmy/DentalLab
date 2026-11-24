@@ -249,7 +249,17 @@ namespace DentalLab.ViewModels.Finance
         [Display(Name = "خارج")]
         public decimal Out { get; set; }
 
+        /// <summary>تحويلات واردة من حسابات أخرى (لا تغيّر مجموع الصندوق).</summary>
+        [Display(Name = "تحويلات واردة")]
+        public decimal TransferIn { get; set; }
+
+        /// <summary>تحويلات صادرة إلى حسابات أخرى.</summary>
+        [Display(Name = "تحويلات صادرة")]
+        public decimal TransferOut { get; set; }
+
+        public decimal TransferNet => TransferIn - TransferOut;
+
         [Display(Name = "الرصيد")]
-        public decimal Balance => OpeningBalance + In - Out;
+        public decimal Balance => OpeningBalance + In - Out + TransferIn - TransferOut;
     }
 }

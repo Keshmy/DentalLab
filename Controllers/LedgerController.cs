@@ -100,6 +100,13 @@ namespace DentalLab.Controllers
                 .Where(l => l.Year == y && l.Month == m)
                 .ToListAsync();
 
+            var transfers = await _context.AccountTransfers
+                .AsNoTracking()
+                .Include(t => t.FromAccount)
+                .Include(t => t.ToAccount)
+                .Where(t => t.Year == y && t.Month == m)
+                .ToListAsync();
+
             var rows = new List<LedgerRow>();
 
             rows.AddRange(income.Select(e => new LedgerRow
@@ -130,6 +137,16 @@ namespace DentalLab.Controllers
                 Account = l.FinancialAccount?.Name,
                 In = LoanDirection.IsCashIn(l.Direction) ? l.Amount : 0m,
                 Out = LoanDirection.IsCashIn(l.Direction) ? 0m : l.Amount
+            }));
+
+            // التحويل بين الحسابات لا يغيّر رصيد الصندوق الكلي: يظهر للعلم بلا داخل ولا خارج.
+            rows.AddRange(transfers.Select(t => new LedgerRow
+            {
+                Date = t.Date,
+                Kind = LedgerKind.Transfer,
+                Description = $"من {t.FromAccount?.Name} إلى {t.ToAccount?.Name} — {t.Amount:N2}"
+                              + (string.IsNullOrWhiteSpace(t.Notes) ? "" : " — " + t.Notes),
+                Account = $"{t.FromAccount?.Name} ← {t.ToAccount?.Name}"
             }));
 
             var ordered = rows

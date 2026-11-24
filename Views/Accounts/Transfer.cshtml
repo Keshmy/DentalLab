@@ -1,0 +1,56 @@
+@model AccountTransfer
+@{
+    ViewData["Title"] = "تحويل بين الحسابات";
+}
+
+<h4 class="mb-3">تحويل بين الحسابات</h4>
+
+<form asp-action="Transfer" method="post" class="col-md-8">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+    <div class="card mb-3">
+        <div class="card-body row g-3">
+            <div class="col-md-6">
+                <label asp-for="FromAccountId" class="form-label"></label>
+                <select asp-for="FromAccountId" class="form-select" asp-items="ViewBag.FromAccounts">
+                    <option value="">— اختر —</option>
+                </select>
+                <span asp-validation-for="FromAccountId" class="text-danger"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="ToAccountId" class="form-label"></label>
+                <select asp-for="ToAccountId" class="form-select" asp-items="ViewBag.ToAccounts">
+                    <option value="">— اختر —</option>
+                </select>
+                <span asp-validation-for="ToAccountId" class="text-danger"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Amount" class="form-label"></label>
+                <input asp-for="Amount" type="number" step="0.01" min="0.01" class="form-control" value="@(Model.Amount > 0 ? Model.Amount.ToString("0.##") : "")" />
+                <span asp-validation-for="Amount" class="text-danger"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Date" class="form-label"></label>
+                <input asp-for="Date" type="date" class="form-control" />
+                <span asp-validation-for="Date" class="text-danger"></span>
+            </div>
+            <div class="col-md-12">
+                <label asp-for="Notes" class="form-label"></label>
+                <input asp-for="Notes" class="form-control" placeholder="مثال: إيداع الكاش في المصرف" />
+            </div>
+        </div>
+        <div class="card-footer small text-muted">
+            ينقص المبلغ من الحساب الأول ويُضاف إلى الثاني. لا يغيّر إجمالي الأرصدة ولا الربح،
+            ويظهر في سجل الصندوق كحركة «تحويل».
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <button class="btn btn-primary px-5">تحويل</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

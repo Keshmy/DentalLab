@@ -111,15 +111,15 @@ namespace DentalLab.Controllers
                 Title = "الحالات",
                 Subtitle = year.HasValue ? (month.HasValue ? $"شهر {month}/{year}" : $"سنة {year}") : "كل الفترات",
                 FileName = $"Cases-{DateTime.Now:yyyy-MM-dd}",
-                Headers = ["رقم", "اسم الحالة", "الطبيب", "المركز", "الأعمال", "الاستلام", "التسليم", "الحالة", "الوحدات", "الإجمالي", "مفوترة"],
-                ColumnWidths = [0.7f, 2, 1.6f, 1.6f, 3, 1.1f, 1.1f, 0.9f, 0.8f, 1.1f, 0.8f],
+                Headers = ["رقم", "اسم الحالة", "الطبيب", "المركز", "الأعمال", "الاستلام", "التسليم", "الحالة", "الوحدات", "الإجمالي", "مفوترة", "ملاحظات"],
+                ColumnWidths = [0.7f, 2, 1.6f, 1.6f, 3, 1.1f, 1.1f, 0.9f, 0.8f, 1.1f, 0.8f, 2],
                 Rows = list.Select(c => new object?[]
                 {
                     c.CaseNumber, c.PatientName, c.Doctor?.Name, c.Clinic?.Name,
                     string.Join("، ", c.Items.Select(i => i.Quantity > 1 ? $"{i.DisplayName} ×{i.Quantity}" : i.DisplayName)),
-                    c.ReceivedDate, c.DeliveryDate, c.Status, c.Units, c.Total, c.IsInvoiced ? "نعم" : ""
+                    c.ReceivedDate, c.DeliveryDate, c.Status, c.Units, c.Total, c.IsInvoiced ? "نعم" : "", c.Notes
                 }).ToList(),
-                Footer = [null, $"{list.Count} حالة", null, null, null, null, null, null, list.Sum(c => c.Units), billable.Sum(c => c.Total), null],
+                Footer = [null, $"{list.Count} حالة", null, null, null, null, null, null, list.Sum(c => c.Units), billable.Sum(c => c.Total), null, null],
                 Note = "الإجمالي في السطر الأخير لا يشمل الحالات الملغاة."
             };
 
@@ -450,39 +450,6 @@ namespace DentalLab.Controllers
             });
         }
 
-        public async Task<JsonResult> RemakePrice(Guid? caseId, Guid serviceTypeId, Guid? doctorId, Guid? clinicId, string? reason, int? localSequence)
-        {
-            // عند إنشاء حالة جديدة أو تعديل كل الأسطر، نفضّل تسلسل النموذج الحالي على عدد DB القديم
-            if (localSequence is > 0)
-            {
-                var price = await _pricing.ResolveAsync(serviceTypeId, doctorId, clinicId);
-                var isLabFault = reason == RemakeReason.LabFault;
-                var chargeable = localSequence >= 2 && !isLabFault;
-                return Json(new
-                {
-                    price = chargeable ? price.Price : 0m,
-                    fullPrice = price.Price,
-                    chargeable,
-                    sequence = localSequence.Value,
-                    explanation = isLabFault
-                        ? "خطأ المعمل — مجاناً"
-                        : localSequence == 1
-                            ? "الإعادة الأولى على المعمل — مجاناً"
-                            : $"الإعادة رقم {localSequence} — على الطبيب"
-                });
-            }
-
-            var result = await _pricing.ResolveRemakeAsync(caseId ?? Guid.Empty, serviceTypeId, doctorId, reason, clinicId);
-            return Json(new
-            {
-                price = result.Price,
-                fullPrice = result.FullPrice,
-                chargeable = result.IsChargeable,
-                sequence = result.Sequence,
-                explanation = result.Explanation
-            });
-        }
-
         private async Task BuildItems(LabCase labCase, List<LabCaseItemFormVM> lines)
         {
             var serviceIds = lines.Where(l => l.ServiceTypeId.HasValue)
@@ -528,23 +495,30 @@ namespace DentalLab.Controllers
                 }
 
                 var price = line.UnitPrice;
+                var priced = false;   // سطر يأخذ سعراً (ليس مجانياً بالقاعدة)
                 if (isFree)
                 {
                     price = 0;
                 }
                 else if (treatAsRemake)
                 {
+                    // الإعادة: المستخدم يقرر — السعر كما كُتب (0 = مجانية للطبيب). لا قاعدة تلقائية.
                     remakeSequence++;
-                    var isLabFault = line.RemakeReason == RemakeReason.LabFault;
-                    var chargeable = remakeSequence >= 2 && !isLabFault;
-                    if (!chargeable)
-                        price = 0;
-                    else if (price == 0)
+                }
+                else
+                {
+                    priced = true;
+                    if (price == 0 && service != null)
                         price = ResolveCatalogPrice();
                 }
-                else if (price == 0 && service != null)
+
+                // «سعر يدوي» = السعر يختلف عن قائمة الأسعار. إن لم يُغيَّر السعر في هذا التعديل نُبقي العلامة كما هي.
+                var isManual = false;
+                if (priced && service != null)
                 {
-                    price = ResolveCatalogPrice();
+                    isManual = line.OriginalUnitPrice.HasValue && line.OriginalUnitPrice.Value == price
+                        ? line.IsManualPrice
+                        : price != ResolveCatalogPrice();
                 }
 
                 var cost = line.UnitCost > 0
@@ -560,6 +534,7 @@ namespace DentalLab.Controllers
                     Quantity = Math.Max(1, line.Quantity),
                     UnitPrice = price,
                     UnitCost = cost,
+                    IsManualPrice = isManual,
                     IsRemake = treatAsRemake,
                     RemakeReason = treatAsRemake ? line.RemakeReason : null,
                     RemakeSequence = treatAsRemake ? remakeSequence : 0,
@@ -608,6 +583,8 @@ namespace DentalLab.Controllers
                             ProductName = i.ProductName,
                             Quantity = i.Quantity,
                             UnitPrice = i.UnitPrice,
+                            OriginalUnitPrice = i.UnitPrice,
+                            IsManualPrice = i.IsManualPrice,
                             UnitCost = i.UnitCost,
                             IsRemake = i.IsRemake,
                             RemakeReason = i.RemakeReason,

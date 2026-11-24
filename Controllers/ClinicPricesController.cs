@@ -1,3 +1,4 @@
+using DentalLab.Services;
 using DentalLab.Classes;
 using DentalLab.Models;
 using DentalLab.Models.Entities;
@@ -63,7 +64,7 @@ namespace DentalLab.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Manage(Guid id, ClinicPriceSheetVM model)
+        public async Task<IActionResult> Manage([FromServices] RepriceService reprice, Guid id, ClinicPriceSheetVM model)
         {
             var clinic = await _context.Clinics.FirstOrDefaultAsync(c => c.Id == id);
             if (clinic == null)
@@ -81,6 +82,7 @@ namespace DentalLab.Controllers
                 .ToDictionaryAsync(s => s.Id, s => s.UnitPrice);
 
             int added = 0, updated = 0, removed = 0;
+            var previous = new Dictionary<Guid, HashSet<decimal>>();
 
             foreach (var row in model.Rows)
             {
@@ -88,6 +90,8 @@ namespace DentalLab.Controllers
                     continue;
 
                 var current = existing.FirstOrDefault(p => p.ServiceTypeId == row.ServiceTypeId);
+                var before = new HashSet<decimal> { generalPrice };
+                if (current != null) before.Add(current.Price);
                 var wantsOverride = row.SpecialPrice.HasValue && row.SpecialPrice.Value != generalPrice;
 
                 if (wantsOverride)
@@ -102,27 +106,38 @@ namespace DentalLab.Controllers
                             Created = DateTime.UtcNow
                         });
                         added++;
+                        previous[row.ServiceTypeId] = before;
                     }
                     else if (current.Price != row.SpecialPrice.Value)
                     {
                         current.Price = row.SpecialPrice.Value;
                         current.Modified = DateTime.UtcNow;
                         updated++;
+                        previous[row.ServiceTypeId] = before;
                     }
                 }
                 else if (current != null)
                 {
                     _context.ClinicPrices.Remove(current);
                     removed++;
+                    previous[row.ServiceTypeId] = before;
                 }
             }
 
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] =
-                $"أسعار {clinic.Name}: أُضيف {added}، عُدِّل {updated}، حُذف {removed}. " +
-                "الحالات المسجَّلة سابقاً لم تتغير — كل سطر يحفظ سعره وقت الإدخال.";
+            var message = $"أسعار {clinic.Name}: أُضيف {added}، عُدِّل {updated}، حُذف {removed}.";
 
+            // الحالات المفوترة لا تتغير أبداً؛ غير المفوترة تُعرض للمراجعة قبل تحديث سعرها
+            if (added + updated + removed > 0
+                && (await reprice.PreviewAsync(new RepriceScope { ClinicId = id })).Count > 0)
+            {
+                TempData[RepricePrevious.TempDataKey] = RepricePrevious.Encode(previous);
+                TempData["SuccessMessage"] = message + " راجع الحالات غير المفوترة التي تتأثر بهذا التعديل.";
+                return RedirectToAction("Index", "Reprice", new { clinicId = id, returnUrl = Url.Action(nameof(Manage), new { id }) });
+            }
+
+            TempData["SuccessMessage"] = message + " الحالات المفوترة لا تتغير.";
             return RedirectToAction(nameof(Manage), new { id });
         }
 

@@ -23,6 +23,12 @@ namespace DentalLab.ViewModels
         [Display(Name = "السعر")]
         public decimal UnitPrice { get; set; }
 
+        /// <summary>السعر المحفوظ قبل التعديل — لمعرفة هل غيّر المستخدم السعر في هذه المرة.</summary>
+        public decimal? OriginalUnitPrice { get; set; }
+
+        /// <summary>علامة «سعر يدوي» المحفوظة على السطر.</summary>
+        public bool IsManualPrice { get; set; }
+
         [Range(0, 1000000)]
         [Display(Name = "تكلفة الوحدة")]
         public decimal UnitCost { get; set; }

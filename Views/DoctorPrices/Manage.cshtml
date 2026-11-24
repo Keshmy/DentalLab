@@ -5,14 +5,18 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h4 class="fw-bold mb-0">أسعار الطبيب: @Model.DoctorName</h4>
-    <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+    <div class="d-flex gap-2">
+        <a asp-controller="Reprice" asp-action="Index" asp-route-doctorId="@Model.DoctorId"
+           asp-route-returnUrl="@Url.Action("Manage", new { id = Model.DoctorId })" class="btn btn-outline-primary">مراجعة الحالات غير المفوترة</a>
+        <a asp-action="Index" class="btn btn-outline-secondary">رجوع</a>
+    </div>
 </div>
 
 <div class="alert alert-light border">
     اترك خانة <strong>السعر الخاص</strong> فارغة ليُطبَّق السعر العام.
     إن كتبت سعراً مساوياً للسعر العام فسيُحذف التخصيص تلقائياً.
     <br />
-    تعديل الأسعار هنا <strong>لا يغيّر</strong> الحالات أو الفواتير المسجَّلة سابقاً.
+    الحالات <strong>المفوترة</strong> لا تتغير أبداً. بعد الحفظ تُعرض الحالات غير المفوترة التي تتأثر لتختار ما يُحدَّث سعره.
 </div>
 
 <form asp-action="Manage" asp-route-id="@Model.DoctorId" method="post">

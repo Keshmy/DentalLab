@@ -8,12 +8,18 @@
     var totalIn = rows.Sum(a => a.In);
     var totalOut = rows.Sum(a => a.Out);
     var totalBalance = rows.Sum(a => a.Balance);
+    var totalTransfer = rows.Sum(a => a.TransferNet);
+    var transfers = ViewBag.Transfers as List<AccountTransfer> ?? new List<AccountTransfer>();
+    var hasTransfers = transfers.Count > 0 || rows.Any(a => a.TransferIn != 0 || a.TransferOut != 0);
 }
 <partial name="Partial/_datatables-css" />
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h3 class="fw-bold mb-0">الحسابات والصناديق</h3>
-    <a asp-action="Create" class="btn btn-primary">حساب جديد</a>
+    <div class="d-flex gap-2">
+        <a asp-action="Transfer" class="btn btn-outline-primary"><i class="bi bi-arrow-left-right"></i> تحويل بين الحسابات</a>
+        <a asp-action="Create" class="btn btn-primary">حساب جديد</a>
+    </div>
 </div>
 
 <div class="row g-2 mb-3">
@@ -51,6 +57,7 @@
             <th>رصيد افتتاحي</th>
             <th>داخل</th>
             <th>خارج</th>
+            <th>تحويلات</th>
             <th>الرصيد</th>
             <th></th>
         </tr>
@@ -74,6 +81,10 @@
                 <td data-order="@a.OpeningBalance">@a.OpeningBalance.ToString("N2")</td>
                 <td class="text-success" data-order="@a.In">@a.In.ToString("N2")</td>
                 <td class="text-danger" data-order="@a.Out">@a.Out.ToString("N2")</td>
+                <td data-order="@a.TransferNet" class="@(a.TransferNet > 0 ? "text-success" : a.TransferNet < 0 ? "text-danger" : "")"
+                    title="وارد @a.TransferIn.ToString("N2") — صادر @a.TransferOut.ToString("N2")">
+                    @(a.TransferNet > 0 ? "+" : "")@a.TransferNet.ToString("N2")
+                </td>
                 <td class="fw-bold" data-order="@a.Balance">@a.Balance.ToString("N2")</td>
                 <td>
                     @if (!a.IsUnassigned)
@@ -93,11 +104,48 @@
             <th>@totalOpening.ToString("N2")</th>
             <th>@totalIn.ToString("N2")</th>
             <th>@totalOut.ToString("N2")</th>
+            <th>@totalTransfer.ToString("N2")</th>
             <th>@totalBalance.ToString("N2")</th>
             <th></th>
         </tr>
     </tfoot>
 </table>
+
+@if (hasTransfers)
+{
+    <h5 class="fw-bold mt-4 mb-2">التحويلات بين الحسابات</h5>
+    <p class="small text-muted">التحويل ينقل المال بين حساباتك فقط: لا يغيّر إجمالي الأرصدة ولا الربح. آخر @transfers.Count تحويل.</p>
+    <table class="table table-bordered table-sm align-middle">
+        <thead>
+            <tr>
+                <th>التاريخ</th>
+                <th>من حساب</th>
+                <th>إلى حساب</th>
+                <th>المبلغ</th>
+                <th>ملاحظات</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in transfers)
+            {
+                <tr>
+                    <td>@t.Date.ToString("yyyy/M/d")</td>
+                    <td>@t.FromAccount?.Name</td>
+                    <td>@t.ToAccount?.Name</td>
+                    <td class="fw-bold">@t.Amount.ToString("N2")</td>
+                    <td class="small">@t.Notes</td>
+                    <td>
+                        <form asp-action="DeleteTransfer" asp-route-id="@t.Id" method="post" class="d-inline"
+                              onsubmit="return confirm('إلغاء هذا التحويل؟ سيعود المبلغ إلى الحساب المحوَّل منه.');">
+                            <button class="btn btn-sm btn-outline-danger">إلغاء</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
 
 @if (inactive.Count > 0)
 {

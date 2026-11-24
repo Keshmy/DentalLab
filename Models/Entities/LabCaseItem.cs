@@ -30,7 +30,8 @@ namespace DentalLab.Models.Entities
         public int Quantity { get; set; } = 1;
 
         /// <summary>
-        /// سعر الوحدة مُثبَّت وقت الإدخال، حتى لا يتغير أي سطر قديم عند تعديل قائمة الأسعار.
+        /// سعر الوحدة مُثبَّت وقت الإدخال. السطر المفوتر لا يتغير أبداً؛ غير المفوتر يمكن تحديثه
+        /// من صفحة «تحديث أسعار الحالات غير المفوترة» بعد تعديل القائمة (RepriceService).
         /// </summary>
         [Column(TypeName = "decimal(18,2)")]
         [Display(Name = "السعر")]
@@ -41,6 +42,13 @@ namespace DentalLab.Models.Entities
         [Display(Name = "تكلفة الوحدة")]
         public decimal UnitCost { get; set; }
 
+        /// <summary>
+        /// السعر كُتب يدوياً ويختلف عن قائمة الأسعار (خصم أو اتفاق خاص).
+        /// تحديث أسعار الحالات غير المفوترة لا يلمس هذه الأسطر.
+        /// </summary>
+        [Display(Name = "سعر يدوي")]
+        public bool IsManualPrice { get; set; }
+
         [Display(Name = "إعادة")]
         public bool IsRemake { get; set; }
 
@@ -48,7 +56,7 @@ namespace DentalLab.Models.Entities
         [Display(Name = "سبب الإعادة")]
         public string? RemakeReason { get; set; }
 
-        /// <summary>رقم الإعادة لهذه الحالة: 1 = على المعمل (مجاناً)، 2 وما بعدها = على الطبيب.</summary>
+        /// <summary>ترتيب الإعادة داخل الحالة (للتقارير فقط — السعر يحدده المستخدم، 0 = مجانية).</summary>
         [Display(Name = "رقم الإعادة")]
         public int RemakeSequence { get; set; }
 

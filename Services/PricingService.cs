@@ -7,7 +7,7 @@ namespace DentalLab.Services
     /// <summary>
     /// تسعير الأسطر:
     ///   السعر = سعر الطبيب إن وُجد، وإلا سعر العيادة، وإلا السعر العام.
-    /// والإعادة: الأولى على المعمل (مجاناً)، والثانية وما بعدها على الطبيب.
+    /// والإعادة: لا تسعير تلقائي — المستخدم يحدد في النموذج هل هي مجانية (0) أو بسعر.
     /// </summary>
     public class PricingService
     {
@@ -64,37 +64,6 @@ namespace DentalLab.Services
             }
 
             return result;
-        }
-
-        /// <summary>
-        /// سعر الإعادة المقترح. القاعدة المتفق عليها:
-        /// الإعادة الأولى لهذه الحالة على المعمل (صفر)، والإعادة الثانية وما بعدها على الطبيب.
-        /// وخطأ المعمل مجاني دائماً بصرف النظر عن الترتيب.
-        /// </summary>
-        public async Task<RemakeResult> ResolveRemakeAsync(Guid caseId, Guid serviceTypeId, Guid? doctorId, string? reason, Guid? clinicId = null)
-        {
-            var previousRemakes = await _context.LabCaseItems
-                .AsNoTracking()
-                .CountAsync(i => i.LabCaseId == caseId && i.IsRemake);
-
-            var sequence = previousRemakes + 1;
-            var price = await ResolveAsync(serviceTypeId, doctorId, clinicId);
-
-            var isLabFault = reason == RemakeReason.LabFault;
-            var chargeable = sequence >= 2 && !isLabFault;
-
-            return new RemakeResult
-            {
-                Sequence = sequence,
-                IsChargeable = chargeable,
-                Price = chargeable ? price.Price : 0m,
-                FullPrice = price.Price,
-                Explanation = isLabFault
-                    ? "خطأ المعمل — مجاناً"
-                    : sequence == 1
-                        ? "الإعادة الأولى على المعمل — مجاناً"
-                        : $"الإعادة رقم {sequence} — على الطبيب"
-            };
         }
 
         /// <summary>كل الأسعار المطبَّقة لطبيب واحد (للعرض في شاشة أسعار الطبيب).</summary>
@@ -159,14 +128,5 @@ namespace DentalLab.Services
         public bool IsClinicPrice { get; set; }
 
         public decimal Difference => Price - GeneralPrice;
-    }
-
-    public class RemakeResult
-    {
-        public int Sequence { get; set; }
-        public bool IsChargeable { get; set; }
-        public decimal Price { get; set; }
-        public decimal FullPrice { get; set; }
-        public string Explanation { get; set; } = string.Empty;
     }
 }

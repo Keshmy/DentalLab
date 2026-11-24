@@ -25,6 +25,7 @@ namespace DentalLab.Models
             [typeof(ClinicCreditEntry)] = "رصيد دائن",
             [typeof(Clinic)] = "عيادة",
             [typeof(Doctor)] = "طبيب",
+            [typeof(AccountTransfer)] = "تحويل بين حسابات",
         };
 
         private static readonly HashSet<string> Skipped =
@@ -146,6 +147,7 @@ namespace DentalLab.Models
                 ServiceType or Clinic or Doctor => V("Name")?.ToString() ?? "",
                 IncomeEntry or Expense => $"{V("Description")} — {Format(V("Amount"))}",
                 ClinicCreditEntry => $"{await names.FormatAsync("ClinicId", V("ClinicId"), ct)} — {Format(V("Amount"))}",
+                AccountTransfer => $"من {await names.FormatAsync("FromAccountId", V("FromAccountId"), ct)} إلى {await names.FormatAsync("ToAccountId", V("ToAccountId"), ct)} — {Format(V("Amount"))}",
                 _ => entry.Entity.GetType().Name
             };
         }
@@ -195,7 +197,7 @@ namespace DentalLab.Models
                     "ClinicId" => await db.Clinics.AsNoTracking().Where(x => x.Id == id).Select(x => x.Name).FirstOrDefaultAsync(ct),
                     "ServiceTypeId" => await db.ServiceTypes.AsNoTracking().Where(x => x.Id == id).Select(x => x.Name).FirstOrDefaultAsync(ct),
                     "ExpenseCategoryId" => await db.ExpenseCategories.AsNoTracking().Where(x => x.Id == id).Select(x => x.Name).FirstOrDefaultAsync(ct),
-                    "FinancialAccountId" => await db.FinancialAccounts.AsNoTracking().Where(x => x.Id == id).Select(x => x.Name).FirstOrDefaultAsync(ct),
+                    "FinancialAccountId" or "FromAccountId" or "ToAccountId" => await db.FinancialAccounts.AsNoTracking().Where(x => x.Id == id).Select(x => x.Name).FirstOrDefaultAsync(ct),
                     "InvoiceId" => await db.Invoices.AsNoTracking().Where(x => x.Id == id).Select(x => "فاتورة " + x.Number).FirstOrDefaultAsync(ct),
                     "LabCaseId" => await db.LabCases.AsNoTracking().Where(x => x.Id == id).Select(x => "حالة " + x.CaseNumber + " — " + x.PatientName).FirstOrDefaultAsync(ct),
                     _ => null

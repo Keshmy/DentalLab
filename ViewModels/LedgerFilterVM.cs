@@ -74,6 +74,7 @@ namespace DentalLab.ViewModels
         public const string LoanRepaid = "سداد سلفة";
         public const string LoanBorrowed = "دين علينا";
         public const string LoanSettled = "سداد دين علينا";
+        public const string Transfer = "تحويل";
 
         /// <summary>اسم الحركة في السجل حسب اتجاه السلفة.</summary>
         public static string ForLoan(string? direction) => direction switch

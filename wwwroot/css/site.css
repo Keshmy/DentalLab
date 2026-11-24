@@ -196,6 +196,13 @@ body {
         z-index: 11;
     }
 
+    /* القالب يجعل قائمة .nav داخل الشريط تُمرَّر أيضاً، فيظهر شريطا تمرير متجاوران.
+       نُبقي التمرير على الشريط الجانبي وحده. */
+    .sidebar-fixed .sidebar .nav {
+        max-height: none;
+        overflow: visible;
+    }
+
     .sidebar-fixed .main-panel {
         margin-right: var(--lab-sidebar-w);
         margin-left: 0 !important;

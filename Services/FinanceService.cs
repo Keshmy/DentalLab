@@ -288,7 +288,7 @@ namespace DentalLab.Services
         }
 
         /// <summary>
-        /// رصيد كل حساب = افتتاحي + الداخل − الخارج.
+        /// رصيد كل حساب = افتتاحي + الداخل − الخارج + التحويلات الواردة − الصادرة.
         /// مجموع الأسطر = رصيد الصندوق في سجل الصندوق: الحركات بدون حساب تظهر في سطر «بدون حساب»،
         /// والحسابات الموقوفة تظهر ما دام فيها رصيد (وإلا اختفى مالها من المجموع).
         /// </summary>
@@ -325,6 +325,16 @@ namespace DentalLab.Services
                 .Select(g => new { Id = g.Key, Total = g.Sum(x => x.Amount) })
                 .ToListAsync();
 
+            var transferIn = await _context.AccountTransfers
+                .GroupBy(t => t.ToAccountId)
+                .Select(g => new { Id = g.Key, Total = g.Sum(x => x.Amount) })
+                .ToListAsync();
+
+            var transferOut = await _context.AccountTransfers
+                .GroupBy(t => t.FromAccountId)
+                .Select(g => new { Id = g.Key, Total = g.Sum(x => x.Amount) })
+                .ToListAsync();
+
             var list = accounts.Select(a => new AccountBalanceVM
             {
                 AccountId = a.Id,
@@ -334,7 +344,9 @@ namespace DentalLab.Services
                 In = (incomeIn.FirstOrDefault(x => x.Id == a.Id)?.Total ?? 0m)
                      + (loanIn.FirstOrDefault(x => x.Id == a.Id)?.Total ?? 0m),
                 Out = (expenseOut.FirstOrDefault(x => x.Id == a.Id)?.Total ?? 0m)
-                      + (loanOut.FirstOrDefault(x => x.Id == a.Id)?.Total ?? 0m)
+                      + (loanOut.FirstOrDefault(x => x.Id == a.Id)?.Total ?? 0m),
+                TransferIn = transferIn.FirstOrDefault(x => x.Id == a.Id)?.Total ?? 0m,
+                TransferOut = transferOut.FirstOrDefault(x => x.Id == a.Id)?.Total ?? 0m
             })
             .Where(x => accounts.First(a => a.Id == x.AccountId).IsActive || x.Balance != 0)
             .ToList();
